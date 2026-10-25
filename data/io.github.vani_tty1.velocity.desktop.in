@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Velocity
+Exec=velocity
+Icon=io.github.vani_tty1.velocity
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=GTK;
+StartupNotify=true
+DBusActivatable=true

@@ -1,0 +1,8 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+data/io.github.vani_tty1.velocity.desktop.in
+data/io.github.vani_tty1.velocity.metainfo.xml.in
+data/io.github.vani_tty1.velocity.gschema.xml
+src/main.c
+src/velocity-window.c
+src/velocity-window.blp

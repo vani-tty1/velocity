@@ -1,0 +1,49 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [unstable, main]
+
+name: Build Bundle
+jobs:
+  lint:
+    name: "Validate manifest"
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/flathub/flatpak-builder-lint:latest
+      options: --entrypoint=
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Run flatpak-builder-lint
+        run: |
+          flatpak-builder-lint --gha-format manifest build-aux/io.github.vani_tty1.velocity.yaml
+
+  flatpak:
+    name: "Build"
+    needs: lint
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    strategy:
+      matrix:
+        variant:
+          - arch: x86_64
+            runner: ubuntu-26.04
+          - arch: aarch64
+            runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.variant.runner }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        bundle: velocity.flatpak
+        manifest-path: build-aux/io.github.vani_tty1.velocity.yaml
+        cache-key: flatpak-builder-${{ github.sha }}
+        arch: ${{ matrix.variant.arch }}
+        run-tests: true
+        verbose: true
