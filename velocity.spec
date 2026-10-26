@@ -1,6 +1,6 @@
 Name:           velocity
 Version:        0.1.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
 URL:            https://github.com/vani-tty1/velocity
@@ -41,5 +41,5 @@ A speedtest app using LibreSpeed
 %{_datadir}/metainfo/io.github.vani_tty1.velocity.metainfo.xml
 
 %changelog
-* Sun Oct 25 2026 Giovanni Rafanan <giovannirafanan609@gmail.com> - 0.1.0-1
+* Sun Oct 26 2026 Giovanni Rafanan <giovannirafanan609@gmail.com> - 0.1.0-1
 - Initial package
