@@ -2,8 +2,13 @@
 
 import os
 import sys
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
+
+# Speed configuration
+TARGET_MBPS = 100  # Target speed cap in Mbps
+BYTES_PER_SEC = (TARGET_MBPS * 1_000_000) / 8
 
 BLOCK = os.urandom(1024 * 1024)
 CHUNK_SIZE = 1 << 16
@@ -45,17 +50,27 @@ class SpeedtestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 n = 4
 
+            total_bytes = n * len(BLOCK)
             self.send_response(200)
             self._send_common_headers()
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Content-Disposition", "attachment; filename=random.dat")
             self.send_header("Content-Transfer-Encoding", "binary")
-            self.send_header("Content-Length", str(n * len(BLOCK)))
+            self.send_header("Content-Length", str(total_bytes))
             self.end_headers()
 
+            sent = 0
+            start_time = time.perf_counter()
             try:
-                for _ in range(n):
-                    self.wfile.write(BLOCK)
+                while sent < total_bytes:
+                    to_send = min(CHUNK_SIZE, total_bytes - sent)
+                    self.wfile.write(BLOCK[:to_send])
+                    sent += to_send
+
+                    expected_time = sent / BYTES_PER_SEC
+                    elapsed = time.perf_counter() - start_time
+                    if expected_time > elapsed:
+                        time.sleep(expected_time - elapsed)
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
@@ -70,12 +85,21 @@ class SpeedtestHandler(BaseHTTPRequestHandler):
         except ValueError:
             left = 0
 
+        read_total = 0
+        start_time = time.perf_counter()
         try:
             while left > 0:
                 d = self.rfile.read(min(left, CHUNK_SIZE))
                 if not d:
                     break
+                read_total += len(d)
                 left -= len(d)
+
+                expected_time = read_total / BYTES_PER_SEC
+                elapsed = time.perf_counter() - start_time
+                if expected_time > elapsed:
+                    time.sleep(expected_time - elapsed)
+
             self.send_response(200)
             self._send_common_headers()
             self.send_header("Content-Length", "0")
