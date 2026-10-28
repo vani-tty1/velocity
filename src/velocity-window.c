@@ -26,6 +26,7 @@
 #include "velocity-speedtest.h"
 #include "velocity-window.h"
 #define GAUGE_MAX_MBPS 1000.0
+#define HISTORY_MAX 50
 
 struct _VelocityWindow
 {
@@ -42,7 +43,10 @@ struct _VelocityWindow
   GtkLabel *upload_value;
   GtkLabel *ping_value;
   GtkLabel *jitter_value;
+  GtkStack *history_stack;
+  GtkListBox *history_list;
 
+  GSettings *settings;
   VelocitySpeedtest *test;
 
   double gauge_fraction;
@@ -153,6 +157,79 @@ format_ms (double ms,
   return g_strdup_printf (with_unit ? _ ("%.0f ms") : "%.0f", ms);
 }
 
+static GtkWidget *
+history_row_new (gint64 ts,
+                 const char *server,
+                 double download,
+                 double upload,
+                 double ping)
+{
+  g_autofree char *d = format_mbps (download);
+  g_autofree char *u = format_mbps (upload);
+  g_autofree char *p = format_ms (ping, TRUE);
+  g_autofree char *title = g_strdup_printf ("↓ %s   ↑ %s", d, u);
+  g_autoptr (GDateTime) dt = g_date_time_new_from_unix_local (ts);
+  g_autofree char *when = g_date_time_format (dt, "%x %H:%M");
+  g_autofree char *subtitle = g_strdup_printf ("%s · %s · %s", when, p, server);
+  GtkWidget *row = adw_action_row_new ();
+
+  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
+  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
+  adw_action_row_set_subtitle (ADW_ACTION_ROW (row), subtitle);
+
+  return row;
+}
+
+static void
+history_load (VelocityWindow *self)
+{
+  g_autoptr (GVariant) history = g_settings_get_value (self->settings, "history");
+  GVariantIter iter;
+  const char *server;
+  gint64 ts;
+  double download, upload, ping;
+
+  g_variant_iter_init (&iter, history);
+  while (g_variant_iter_loop (&iter, "(x&sddd)", &ts, &server, &download, &upload, &ping))
+    gtk_list_box_append (self->history_list,
+                         history_row_new (ts, server, download, upload, ping));
+
+  if (g_variant_n_children (history) > 0)
+    gtk_stack_set_visible_child_name (self->history_stack, "list");
+}
+
+static void
+history_save (VelocityWindow *self)
+{
+  const char *server = velocity_speedtest_get_server (self->test);
+  gint64 ts = g_get_real_time () / G_USEC_PER_SEC;
+  double download = velocity_speedtest_get_download (self->test);
+  double upload = velocity_speedtest_get_upload (self->test);
+  double ping = velocity_speedtest_get_ping (self->test);
+  g_autoptr (GVariant) old = g_settings_get_value (self->settings, "history");
+  gsize n = MIN (g_variant_n_children (old), HISTORY_MAX - 1);
+  GVariantBuilder builder;
+
+  if (server == NULL)
+    server = "";
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(xsddd)"));
+  g_variant_builder_add (&builder, "(xsddd)", ts, server, download, upload, ping);
+
+  for (gsize i = 0; i < n; i++)
+    {
+      g_autoptr (GVariant) child = g_variant_get_child_value (old, i);
+
+      g_variant_builder_add_value (&builder, child);
+    }
+
+  g_settings_set_value (self->settings, "history", g_variant_builder_end (&builder));
+
+  gtk_list_box_prepend (self->history_list,
+                        history_row_new (ts, server, download, upload, ping));
+  gtk_stack_set_visible_child_name (self->history_stack, "list");
+}
+
 static void
 set_live_value (VelocityWindow *self,
                 VelocityPhase phase,
@@ -231,6 +308,7 @@ on_phase_changed (VelocitySpeedtest *test,
 
         gtk_label_set_label (self->upload_value, u);
       }
+      history_save (self);
       status = _ ("Test complete");
       button = _ ("Test Again");
       break;
@@ -324,6 +402,7 @@ velocity_window_dispose (GObject *object)
       g_clear_object (&self->test);
     }
   g_clear_object (&self->gauge_animation);
+  g_clear_object (&self->settings);
 
   G_OBJECT_CLASS (velocity_window_parent_class)->dispose (object);
 }
@@ -347,6 +426,8 @@ velocity_window_class_init (VelocityWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, upload_value);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, ping_value);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, jitter_value);
+  gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_stack);
+  gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_list);
   gtk_widget_class_bind_template_callback (widget_class, on_start_clicked);
 }
 
@@ -367,6 +448,9 @@ velocity_window_init (VelocityWindow *self)
   pango_attr_list_unref (big);
 
   gtk_drawing_area_set_draw_func (self->gauge, gauge_draw, self, NULL);
+
+  self->settings = g_settings_new ("io.github.vani_tty1.velocity");
+  history_load (self);
 
   self->test = velocity_speedtest_new ();
   g_signal_connect (self->test, "phase-changed", G_CALLBACK (on_phase_changed), self);
