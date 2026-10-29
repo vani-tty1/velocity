@@ -87,6 +87,22 @@ template $VelocityWindow: Adw.ApplicationWindow {
               clicked => $on_start_clicked() swapped;
               styles ["suggested-action", "pill"]
             }
+            
+            ListBox {
+              selection-mode: none;
+              styles ["boxed-list"]
+
+              Adw.ComboRow server_row {
+                title: _("Server");
+                use-subtitle: true;
+                enable-search: true;
+                expression: expr item as <Gtk.StringObject>.string;
+                model: StringList {
+                  strings [_("Automatic (lowest latency)")]
+                };
+                notify::selected => $on_server_selected() swapped;
+              }
+            }
 
             Grid {
               column-spacing: 12;
