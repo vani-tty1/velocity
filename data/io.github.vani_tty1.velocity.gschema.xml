@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="velocity">
 	<schema id="io.github.vani_tty1.velocity" path="/io/github/vani_tty1/velocity/">
-		<key name="history" type="a(xsddd)">
-			<default>[]</default>
-			<summary>Speed test history</summary>
-		</key>
 	</schema>
 </schemalist>
