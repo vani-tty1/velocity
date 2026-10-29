@@ -36,8 +36,8 @@
 
   <!-- Applications should set a brand color in both light and dark variants like so -->
   <branding>
-    <color type="primary" scheme_preference="light">#ff00ff</color>
-    <color type="primary" scheme_preference="dark">#993d3d</color>
+    <color type="primary" scheme_preference="light">#d5d0e3</color>
+    <color type="primary" scheme_preference="dark">#474154</color>
   </branding>
 
   <screenshots>
@@ -45,9 +45,31 @@
       <image>https://raw.githubusercontent.com/vani-tty1/vani-tty1.github.io/main/public/velocity1.png</image>
       <caption>Main Window</caption>
     </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/vani-tty1/vani-tty1.github.io/main/public/velocity2.png</image>
+      <caption>Results Window</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/vani-tty1/vani-tty1.github.io/main/public/velocity3.png</image>
+      <caption>Velocity in Narrow Window</caption>
+    </screenshot>
   </screenshots>
 
   <releases>
+
+    <release version="0.2.0" date="2026-10-29">
+      <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
+      <description translate="no">
+        <p>This is a stable release with following changes: </p>
+        <ul>
+          <li>New Results page</li>
+          <li>Results are now exportable via a JSON file</li>
+          <li>Better auto-selection of test servers</li>
+        </ul>
+      </description>
+    </release>
+
+
     <release version="0.1.0" date="2026-10-26">
       <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
       <description translate="no">
