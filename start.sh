@@ -5,8 +5,7 @@ set -euo pipefail
 rm -rf build
 meson setup build -Dprofile="development"
 meson compile -C build
-glib-compile-schemas --targetdir=build data
-export GSETTINGS_SCHEMA_DIR="$PWD/build"
+
 
 ./build-aux/mock-librespeed.py &
 SERVER_PID=$!

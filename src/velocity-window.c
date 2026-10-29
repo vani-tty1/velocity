@@ -21,6 +21,8 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
+#include <json-glib/json-glib.h>
 #include <math.h>
 
 #include "velocity-speedtest.h"
@@ -46,7 +48,7 @@ struct _VelocityWindow
   GtkStack *history_stack;
   GtkListBox *history_list;
 
-  GSettings *settings;
+  JsonArray *history;
   VelocitySpeedtest *test;
 
   double gauge_fraction;
@@ -157,13 +159,20 @@ format_ms (double ms,
   return g_strdup_printf (with_unit ? _ ("%.0f ms") : "%.0f", ms);
 }
 
-static GtkWidget *
-history_row_new (gint64 ts,
-                 const char *server,
-                 double download,
-                 double upload,
-                 double ping)
+static char *
+history_path (void)
 {
+  return g_build_filename (g_get_user_data_dir (), "velocity", "history.json", NULL);
+}
+
+static GtkWidget *
+history_row_new (JsonObject *entry)
+{
+  gint64 ts = json_object_get_int_member_with_default (entry, "timestamp", 0);
+  const char *server = json_object_get_string_member_with_default (entry, "server", "");
+  double download = json_object_get_double_member_with_default (entry, "download", 0.0);
+  double upload = json_object_get_double_member_with_default (entry, "upload", 0.0);
+  double ping = json_object_get_double_member_with_default (entry, "ping", 0.0);
   g_autofree char *d = format_mbps (download);
   g_autofree char *u = format_mbps (upload);
   g_autofree char *p = format_ms (ping, TRUE);
@@ -180,54 +189,121 @@ history_row_new (gint64 ts,
   return row;
 }
 
+static char *
+history_serialize (VelocityWindow *self,
+                   gsize *length)
+{
+  g_autoptr (JsonGenerator) generator = json_generator_new ();
+  g_autoptr (JsonNode) root = json_node_new (JSON_NODE_ARRAY);
+
+  json_node_set_array (root, self->history);
+  json_generator_set_root (generator, root);
+  json_generator_set_pretty (generator, TRUE);
+
+  return json_generator_to_data (generator, length);
+}
+
 static void
 history_load (VelocityWindow *self)
 {
-  g_autoptr (GVariant) history = g_settings_get_value (self->settings, "history");
-  GVariantIter iter;
-  const char *server;
-  gint64 ts;
-  double download, upload, ping;
+  g_autofree char *path = history_path ();
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  JsonNode *root;
 
-  g_variant_iter_init (&iter, history);
-  while (g_variant_iter_loop (&iter, "(x&sddd)", &ts, &server, &download, &upload, &ping))
-    gtk_list_box_append (self->history_list,
-                         history_row_new (ts, server, download, upload, ping));
+  self->history = json_array_new ();
 
-  if (g_variant_n_children (history) > 0)
+  if (!json_parser_load_from_file (parser, path, NULL))
+    return;
+
+  root = json_parser_get_root (parser);
+  if (root == NULL || !JSON_NODE_HOLDS_ARRAY (root))
+    return;
+
+  g_clear_pointer (&self->history, json_array_unref);
+  self->history = json_array_ref (json_node_get_array (root));
+
+  for (guint i = 0; i < json_array_get_length (self->history); i++)
+    {
+      JsonNode *node = json_array_get_element (self->history, i);
+
+      if (JSON_NODE_HOLDS_OBJECT (node))
+        gtk_list_box_prepend (self->history_list,
+                              history_row_new (json_node_get_object (node)));
+    }
+
+  if (json_array_get_length (self->history) > 0)
     gtk_stack_set_visible_child_name (self->history_stack, "list");
 }
 
 static void
 history_save (VelocityWindow *self)
 {
+  g_autofree char *path = history_path ();
+  g_autofree char *dir = g_path_get_dirname (path);
+  g_autofree char *data = NULL;
+  g_autoptr (GError) error = NULL;
   const char *server = velocity_speedtest_get_server (self->test);
-  gint64 ts = g_get_real_time () / G_USEC_PER_SEC;
-  double download = velocity_speedtest_get_download (self->test);
-  double upload = velocity_speedtest_get_upload (self->test);
-  double ping = velocity_speedtest_get_ping (self->test);
-  g_autoptr (GVariant) old = g_settings_get_value (self->settings, "history");
-  gsize n = MIN (g_variant_n_children (old), HISTORY_MAX - 1);
-  GVariantBuilder builder;
+  JsonObject *entry = json_object_new ();
+  GtkListBoxRow *old;
+  gsize length;
 
-  if (server == NULL)
-    server = "";
+  json_object_set_int_member (entry, "timestamp", g_get_real_time () / G_USEC_PER_SEC);
+  json_object_set_string_member (entry, "server", server != NULL ? server : "");
+  json_object_set_double_member (entry, "download", velocity_speedtest_get_download (self->test));
+  json_object_set_double_member (entry, "upload", velocity_speedtest_get_upload (self->test));
+  json_object_set_double_member (entry, "ping", velocity_speedtest_get_ping (self->test));
+  json_array_add_object_element (self->history, entry);
 
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(xsddd)"));
-  g_variant_builder_add (&builder, "(xsddd)", ts, server, download, upload, ping);
+  gtk_list_box_prepend (self->history_list, history_row_new (entry));
+  gtk_stack_set_visible_child_name (self->history_stack, "list");
 
-  for (gsize i = 0; i < n; i++)
+  if (json_array_get_length (self->history) > HISTORY_MAX)
     {
-      g_autoptr (GVariant) child = g_variant_get_child_value (old, i);
+      json_array_remove_element (self->history, 0);
 
-      g_variant_builder_add_value (&builder, child);
+      old = gtk_list_box_get_row_at_index (self->history_list, HISTORY_MAX);
+      if (old != NULL)
+        gtk_list_box_remove (self->history_list, GTK_WIDGET (old));
     }
 
-  g_settings_set_value (self->settings, "history", g_variant_builder_end (&builder));
+  data = history_serialize (self, &length);
+  g_mkdir_with_parents (dir, 0700);
+  if (!g_file_set_contents (path, data, length, &error))
+    g_warning ("Could not save history: %s", error->message);
+}
 
-  gtk_list_box_prepend (self->history_list,
-                        history_row_new (ts, server, download, upload, ping));
-  gtk_stack_set_visible_child_name (self->history_stack, "list");
+static void
+on_export_finished (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+  VelocityWindow *self = user_data;
+  g_autoptr (GFile) file = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (source), result, NULL);
+  g_autoptr (GError) error = NULL;
+  g_autofree char *data = NULL;
+  gsize length;
+
+  if (file == NULL)
+    return;
+
+  data = history_serialize (self, &length);
+  if (!g_file_replace_contents (file, data, length, NULL, FALSE,
+                                G_FILE_CREATE_NONE, NULL, NULL, &error))
+    {
+      AdwDialog *dialog = adw_alert_dialog_new (_ ("Export Failed"), error->message);
+
+      adw_alert_dialog_add_response (ADW_ALERT_DIALOG (dialog), "ok", _ ("_OK"));
+      adw_dialog_present (dialog, GTK_WIDGET (self));
+    }
+}
+
+static void
+on_export_clicked (VelocityWindow *self)
+{
+  g_autoptr (GtkFileDialog) dialog = gtk_file_dialog_new ();
+
+  gtk_file_dialog_set_initial_name (dialog, "speedtest-results.json");
+  gtk_file_dialog_save (dialog, GTK_WINDOW (self), NULL, on_export_finished, self);
 }
 
 static void
@@ -402,7 +478,7 @@ velocity_window_dispose (GObject *object)
       g_clear_object (&self->test);
     }
   g_clear_object (&self->gauge_animation);
-  g_clear_object (&self->settings);
+  g_clear_pointer (&self->history, json_array_unref);
 
   G_OBJECT_CLASS (velocity_window_parent_class)->dispose (object);
 }
@@ -429,6 +505,7 @@ velocity_window_class_init (VelocityWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_stack);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_list);
   gtk_widget_class_bind_template_callback (widget_class, on_start_clicked);
+  gtk_widget_class_bind_template_callback (widget_class, on_export_clicked);
 }
 
 static void
@@ -449,7 +526,6 @@ velocity_window_init (VelocityWindow *self)
 
   gtk_drawing_area_set_draw_func (self->gauge, gauge_draw, self, NULL);
 
-  self->settings = g_settings_new ("io.github.vani_tty1.velocity");
   history_load (self);
 
   self->test = velocity_speedtest_new ();

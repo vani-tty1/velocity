@@ -3,8 +3,8 @@ using Adw 1;
 
 template $VelocityWindow: Adw.ApplicationWindow {
   title: _("Velocity");
-  default-width: 350;
-  default-height: 720;
+  default-width: 475;
+  default-height: 820;
 
   content: Adw.ToolbarView {
     [top]
@@ -27,7 +27,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
       Adw.ViewStackPage {
         name: "test";
         title: _("Test");
-        icon-name: "speedometer-symbolic";
+        icon-name: "power-profile-performance-symbolic";
         child: Adw.Clamp {
           maximum-size: 480;
           tightening-threshold: 400;
@@ -219,14 +219,26 @@ template $VelocityWindow: Adw.ApplicationWindow {
                 maximum-size: 480;
                 tightening-threshold: 400;
 
-                child: ListBox history_list {
-                  selection-mode: none;
+                child: Box {
+                  orientation: vertical;
+                  spacing: 12;
                   valign: start;
                   margin-top: 12;
                   margin-bottom: 24;
                   margin-start: 12;
                   margin-end: 12;
-                  styles ["boxed-list"]
+
+                  ListBox history_list {
+                    selection-mode: none;
+                    styles ["boxed-list"]
+                  }
+
+                  Button {
+                    label: _("Export");
+                    halign: center;
+                    clicked => $on_export_clicked() swapped;
+                    styles ["pill", "suggested-action"]
+                  }
                 };
               };
             };
