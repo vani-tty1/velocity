@@ -47,8 +47,11 @@ struct _VelocityWindow
   GtkLabel *jitter_value;
   GtkStack *history_stack;
   GtkListBox *history_list;
+  AdwComboRow *server_row;
 
   JsonArray *history;
+  GSettings *settings;
+  gboolean populating;
   VelocitySpeedtest *test;
 
   double gauge_fraction;
@@ -306,6 +309,56 @@ on_export_clicked (VelocityWindow *self)
   gtk_file_dialog_save (dialog, GTK_WINDOW (self), NULL, on_export_finished, self);
 }
 
+static const char *
+selected_server_base (VelocityWindow *self)
+{
+  guint selected = adw_combo_row_get_selected (self->server_row);
+
+  if (selected == 0 || selected == GTK_INVALID_LIST_POSITION)
+    return NULL;
+
+  return velocity_speedtest_get_server_base_at (self->test, selected - 1);
+}
+
+static void
+on_server_selected (VelocityWindow *self)
+{
+  const char *base;
+
+  if (self->populating)
+    return;
+
+  base = selected_server_base (self);
+  velocity_speedtest_set_preferred_server (self->test, base);
+  g_settings_set_string (self->settings, "server", base != NULL ? base : "");
+}
+
+static void
+on_servers_changed (VelocitySpeedtest *test,
+                    VelocityWindow *self)
+{
+  g_autofree char *saved = g_settings_get_string (self->settings, "server");
+  g_autoptr (GtkStringList) model = gtk_string_list_new (NULL);
+  guint selected = 0;
+
+  gtk_string_list_append (model, _ ("Automatic (lowest latency)"));
+
+  for (guint i = 0; i < velocity_speedtest_get_n_servers (test); i++)
+    {
+      gtk_string_list_append (model, velocity_speedtest_get_server_name_at (test, i));
+
+      if (g_strcmp0 (velocity_speedtest_get_server_base_at (test, i), saved) == 0)
+        selected = i + 1;
+    }
+
+  self->populating = TRUE;
+  adw_combo_row_set_model (self->server_row, G_LIST_MODEL (model));
+  adw_combo_row_set_selected (self->server_row, selected);
+  self->populating = FALSE;
+
+  velocity_speedtest_set_preferred_server (test, selected_server_base (self));
+}
+
 static void
 set_live_value (VelocityWindow *self,
                 VelocityPhase phase,
@@ -407,6 +460,11 @@ on_phase_changed (VelocitySpeedtest *test,
 
   gtk_button_set_label (self->start_button, button);
 
+  gtk_widget_set_sensitive (GTK_WIDGET (self->server_row),
+                            (VelocityPhase) phase == VELOCITY_PHASE_DONE ||
+                                (VelocityPhase) phase == VELOCITY_PHASE_FAILED ||
+                                (VelocityPhase) phase == VELOCITY_PHASE_IDLE);
+
   if ((VelocityPhase) phase == VELOCITY_PHASE_DONE ||
       (VelocityPhase) phase == VELOCITY_PHASE_FAILED ||
       (VelocityPhase) phase == VELOCITY_PHASE_IDLE)
@@ -479,6 +537,7 @@ velocity_window_dispose (GObject *object)
     }
   g_clear_object (&self->gauge_animation);
   g_clear_pointer (&self->history, json_array_unref);
+  g_clear_object (&self->settings);
 
   G_OBJECT_CLASS (velocity_window_parent_class)->dispose (object);
 }
@@ -504,7 +563,9 @@ velocity_window_class_init (VelocityWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, jitter_value);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_stack);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_list);
+  gtk_widget_class_bind_template_child (widget_class, VelocityWindow, server_row);
   gtk_widget_class_bind_template_callback (widget_class, on_start_clicked);
+  gtk_widget_class_bind_template_callback (widget_class, on_server_selected);
   gtk_widget_class_bind_template_callback (widget_class, on_export_clicked);
 }
 
@@ -513,7 +574,11 @@ velocity_window_init (VelocityWindow *self)
 {
   PangoAttrList *big = pango_attr_list_new ();
 
+  self->populating = TRUE;
   gtk_widget_init_template (GTK_WIDGET (self));
+  self->populating = FALSE;
+
+  self->settings = g_settings_new ("io.github.vani_tty1.velocity");
 
   if (g_str_has_suffix (APP_ID, ".Devel"))
     gtk_widget_add_css_class (GTK_WIDGET (self), "devel");
@@ -532,4 +597,7 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect (self->test, "phase-changed", G_CALLBACK (on_phase_changed), self);
   g_signal_connect (self->test, "progress", G_CALLBACK (on_progress), self);
   g_signal_connect (self->test, "failed", G_CALLBACK (on_failed), self);
+  g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
+  velocity_speedtest_load_servers (self->test);
 }
+

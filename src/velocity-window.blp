@@ -4,6 +4,8 @@ using Adw 1;
 template $VelocityWindow: Adw.ApplicationWindow {
   title: _("Velocity");
   default-width: 475;
+  width-request: 360;
+  height-request: 294;
   default-height: 820;
 
   content: Adw.ToolbarView {
@@ -28,185 +30,189 @@ template $VelocityWindow: Adw.ApplicationWindow {
         name: "test";
         title: _("Test");
         icon-name: "power-profile-performance-symbolic";
-        child: Adw.Clamp {
-          maximum-size: 480;
-          tightening-threshold: 400;
+        child: ScrolledWindow {
+          hscrollbar-policy: never;
 
-          child: Box {
-            orientation: vertical;
-            spacing: 18;
-            valign: center;
-            margin-top: 12;
-            margin-bottom: 24;
-            margin-start: 24;
-            margin-end: 24;
+          child: Adw.Clamp {
+            maximum-size: 480;
+            tightening-threshold: 400;
 
-            Label server_label {
-              label: _("Ready");
-              ellipsize: end;
-            }
-
-            Overlay {
-              halign: center;
-
-              child: DrawingArea gauge {
-                content-width: 280;
-                content-height: 280;
-                accessible-role: img;
-              };
-
-              [overlay]
-              Box {
-                orientation: vertical;
-                halign: center;
-                valign: center;
-                spacing: 2;
-
-                Label speed_label {
-                  label: "0";
-                  styles ["numeric"]
-                }
-
-                Label unit_label {
-                  label: _("Mbit/s");
-                  styles ["dim-label"]
-                }
-              }
-            }
-
-            Label phase_label {
-              label: _("Press Start to measure your connection");
-              wrap: true;
-              justify: center;
-              styles ["heading"]
-            }
-
-            Button start_button {
-              label: _("Start");
-              halign: center;
-              clicked => $on_start_clicked() swapped;
-              styles ["suggested-action", "pill"]
-            }
-            
-            ListBox {
-              selection-mode: none;
-              styles ["boxed-list"]
-
-              Adw.ComboRow server_row {
-                title: _("Server");
-                use-subtitle: true;
-                enable-search: true;
-                expression: expr item as <Gtk.StringObject>.string;
-                model: StringList {
-                  strings [_("Automatic (lowest latency)")]
-                };
-                notify::selected => $on_server_selected() swapped;
-              }
-            }
-
-            Grid {
-              column-spacing: 12;
-              row-spacing: 12;
-              column-homogeneous: true;
-              row-homogeneous: true;
+            child: Box {
+              orientation: vertical;
+              spacing: 18;
+              valign: center;
               margin-top: 12;
+              margin-bottom: 24;
+              margin-start: 24;
+              margin-end: 24;
 
-              Box {
-                layout { column: 0; row: 0; }
-                orientation: vertical;
-                styles ["card"]
+              Label server_label {
+                label: _("Ready");
+                ellipsize: end;
+              }
 
-                Label {
-                  label: _("Download");
-                  halign: start;
-                  margin-top: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["caption-heading", "dim-label"]
-                }
+              Overlay {
+                halign: center;
 
-                Label download_value {
-                  label: "—";
-                  halign: start;
-                  margin-bottom: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["title-3", "numeric"]
+                child: DrawingArea gauge {
+                  content-width: 280;
+                  content-height: 280;
+                  accessible-role: img;
+                };
+
+                [overlay]
+                Box {
+                  orientation: vertical;
+                  halign: center;
+                  valign: center;
+                  spacing: 2;
+
+                  Label speed_label {
+                    label: "0";
+                    styles ["numeric"]
+                  }
+
+                  Label unit_label {
+                    label: _("Mbit/s");
+                    styles ["dim-label"]
+                  }
                 }
               }
 
-              Box {
-                layout { column: 1; row: 0; }
-                orientation: vertical;
-                styles ["card"]
+              Label phase_label {
+                label: _("Press Start to measure your connection");
+                wrap: true;
+                justify: center;
+                styles ["heading"]
+              }
 
-                Label {
-                  label: _("Upload");
-                  halign: start;
-                  margin-top: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["caption-heading", "dim-label"]
-                }
+              Button start_button {
+                label: _("Start");
+                halign: center;
+                clicked => $on_start_clicked() swapped;
+                styles ["suggested-action", "pill"]
+              }
 
-                Label upload_value {
-                  label: "—";
-                  halign: start;
-                  margin-bottom: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["title-3", "numeric"]
+              ListBox {
+                selection-mode: none;
+                styles ["boxed-list"]
+
+                Adw.ComboRow server_row {
+                  title: _("Server");
+                  use-subtitle: true;
+                  enable-search: true;
+                  expression: expr item as <Gtk.StringObject>.string;
+                  model: StringList {
+                    strings [_("Automatic (lowest latency)")]
+                  };
+                  notify::selected => $on_server_selected() swapped;
                 }
               }
 
-              Box {
-                layout { column: 0; row: 1; }
-                orientation: vertical;
-                styles ["card"]
+              Grid {
+                column-spacing: 12;
+                row-spacing: 12;
+                column-homogeneous: true;
+                row-homogeneous: true;
+                margin-top: 12;
 
-                Label {
-                  label: _("Ping");
-                  halign: start;
-                  margin-top: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["caption-heading", "dim-label"]
+                Box {
+                  layout { column: 0; row: 0; }
+                  orientation: vertical;
+                  styles ["card"]
+
+                  Label {
+                    label: _("Download");
+                    halign: start;
+                    margin-top: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["caption-heading", "dim-label"]
+                  }
+
+                  Label download_value {
+                    label: "—";
+                    halign: start;
+                    margin-bottom: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["title-3", "numeric"]
+                  }
                 }
 
-                Label ping_value {
-                  label: "—";
-                  halign: start;
-                  margin-bottom: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["title-3", "numeric"]
+                Box {
+                  layout { column: 1; row: 0; }
+                  orientation: vertical;
+                  styles ["card"]
+
+                  Label {
+                    label: _("Upload");
+                    halign: start;
+                    margin-top: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["caption-heading", "dim-label"]
+                  }
+
+                  Label upload_value {
+                    label: "—";
+                    halign: start;
+                    margin-bottom: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["title-3", "numeric"]
+                  }
+                }
+
+                Box {
+                  layout { column: 0; row: 1; }
+                  orientation: vertical;
+                  styles ["card"]
+
+                  Label {
+                    label: _("Ping");
+                    halign: start;
+                    margin-top: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["caption-heading", "dim-label"]
+                  }
+
+                  Label ping_value {
+                    label: "—";
+                    halign: start;
+                    margin-bottom: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["title-3", "numeric"]
+                  }
+                }
+
+                Box {
+                  layout { column: 1; row: 1; }
+                  orientation: vertical;
+                  styles ["card"]
+
+                  Label {
+                    label: _("Jitter");
+                    halign: start;
+                    margin-top: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["caption-heading", "dim-label"]
+                  }
+
+                  Label jitter_value {
+                    label: "—";
+                    halign: start;
+                    margin-bottom: 12;
+                    margin-start: 14;
+                    margin-end: 14;
+                    styles ["title-3", "numeric"]
+                  }
                 }
               }
-
-              Box {
-                layout { column: 1; row: 1; }
-                orientation: vertical;
-                styles ["card"]
-
-                Label {
-                  label: _("Jitter");
-                  halign: start;
-                  margin-top: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["caption-heading", "dim-label"]
-                }
-
-                Label jitter_value {
-                  label: "—";
-                  halign: start;
-                  margin-bottom: 12;
-                  margin-start: 14;
-                  margin-end: 14;
-                  styles ["title-3", "numeric"]
-                }
-              }
-            }
+            };
           };
         };
       }
