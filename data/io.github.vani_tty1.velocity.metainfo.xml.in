@@ -65,6 +65,7 @@
           <li>New Results page</li>
           <li>Results are now exportable via a JSON file</li>
           <li>Better auto-selection of test servers</li>
+          <li>New server picker to choose preferred test server </li>
         </ul>
       </description>
     </release>
