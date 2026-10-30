@@ -20,7 +20,6 @@ velocity_sources = [
 velocity_deps = [
   dependency('gtk4'),
   dependency('libadwaita-1', version: '>= 1.4'),
-  dependency('epoxy'),
   dependency('libsoup-3.0'),
   dependency('json-glib-1.0'),
   cc.find_library('m', required: false),

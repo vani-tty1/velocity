@@ -20,7 +20,6 @@
 
 #include "config.h"
 #include <glib/gi18n.h>
-#include <epoxy/gl.h>
 #include "velocity-application.h"
 #include "velocity-window.h"
 
@@ -76,12 +75,6 @@ velocity_application_about_action (GSimpleAction *action,
 {
     VelocityApplication *self = user_data;
     GtkWindow *window = gtk_application_get_active_window (GTK_APPLICATION (self));
-    const char *vendor = "Unknown";
-    const char *renderer = "Unknown";
-    const char *version = "Unknown";
-    GdkDisplay *display;
-    GError *err = NULL;
-    GdkGLContext *ctx;
     g_autofree char *debug_info = NULL;
     g_autofree char *os_release_content = NULL;
     g_autoptr(GError) error = NULL;
@@ -90,27 +83,6 @@ velocity_application_about_action (GSimpleAction *action,
     static const char *developers[] = {"Giovanni Rafanan <giovannirafanan609@gmail.com>", NULL};
     static const char *designers[] = {"Giovanni Rafanan <giovannirafanan609@gmail.com>", NULL};
 
-    display = gdk_display_get_default();
-    ctx = gdk_display_create_gl_context(display, &err);
-
-    if (ctx && gdk_gl_context_realize(ctx, &err)) {
-        gdk_gl_context_make_current(ctx);
-        vendor = (const char *)glGetString(GL_VENDOR);
-        renderer = (const char *)glGetString(GL_RENDERER);
-        version = (const char *)glGetString(GL_VERSION);
-    } else {
-        if (err) g_clear_error(&err);
-    }
-
-    debug_info = g_strdup_printf("GPU Vendor: %s\nGPU Renderer: %s\nOpenGL Version: %s",
-                                  vendor ? vendor : "Unknown",
-                                  renderer ? renderer : "Unknown",
-                                  version ? version : "Unknown");
-
-    if (ctx) {
-        gdk_gl_context_clear_current();
-        g_object_unref(ctx);
-    }
 
     if (!g_file_get_contents("/etc/os-release", &os_release_content, NULL, &error)) {
         os_release_content = g_strdup("Could not read /etc/os-release");
@@ -120,15 +92,12 @@ velocity_application_about_action (GSimpleAction *action,
     debug_text = g_strdup_printf (
         "Velocity %s\n"
         "GTK version: %d.%d.%d\n"
-        "==> GPU Info:\n"
-        "%s\n\n"
         "==> Runtime Info:\n"
         "%s",
         PACKAGE_VERSION,
         gtk_get_major_version (),
         gtk_get_minor_version (),
         gtk_get_micro_version (),
-        debug_info,
         os_release_content
     );
 
