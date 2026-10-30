@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="velocity">
 	<schema id="io.github.vani_tty1.velocity" path="/io/github/vani_tty1/velocity/">
+		<key name="server" type="s">
+			<default>""</default>
+			<summary>Preferred speed test server</summary>
+		</key>
 	</schema>
 </schemalist>
