@@ -26,7 +26,6 @@
 
 G_BEGIN_DECLS
 
-/* Internal header: shared by the velocity-speedtest-*.c files only. */
 
 typedef struct
 {
@@ -61,7 +60,9 @@ struct _VelocitySpeedtest
   double download;
   double upload;
 
+  GPtrArray *servers;
   GPtrArray *candidates;
+  char *preferred_base;
   int probes_pending;
 
   GArray *rtts;
@@ -80,7 +81,6 @@ struct _VelocitySpeedtest
   GBytes *upload_blob;
 };
 
-/* velocity-speedtest.c: core state machine helpers */
 void velocity_speedtest_set_phase (VelocitySpeedtest *self,
                                    VelocityPhase phase);
 void velocity_speedtest_fail (VelocitySpeedtest *self,
@@ -94,6 +94,7 @@ void velocity_speedtest_emit_progress (VelocitySpeedtest *self,
                                        VelocityPhase phase,
                                        double value);
 void velocity_speedtest_emit_finished (VelocitySpeedtest *self);
+void velocity_speedtest_emit_servers_changed (VelocitySpeedtest *self);
 
 // server list, selection and latency probing
 void velocity_speedtest_select_server (VelocitySpeedtest *self);

@@ -44,6 +44,12 @@ VelocitySpeedtest *velocity_speedtest_new (void);
 void velocity_speedtest_start (VelocitySpeedtest *self);
 void velocity_speedtest_cancel (VelocitySpeedtest *self);
 
+void velocity_speedtest_load_servers (VelocitySpeedtest *self);
+void velocity_speedtest_set_preferred_server (VelocitySpeedtest *self, const char *base);
+guint velocity_speedtest_get_n_servers (VelocitySpeedtest *self);
+const char *velocity_speedtest_get_server_name_at (VelocitySpeedtest *self, guint index);
+const char *velocity_speedtest_get_server_base_at (VelocitySpeedtest *self, guint index);
+
 VelocityPhase velocity_speedtest_get_phase (VelocitySpeedtest *self);
 const char *velocity_speedtest_get_server (VelocitySpeedtest *self);
 double velocity_speedtest_get_ping (VelocitySpeedtest *self);

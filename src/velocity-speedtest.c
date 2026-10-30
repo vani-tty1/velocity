@@ -33,6 +33,7 @@ enum
   SIGNAL_PROGRESS,
   SIGNAL_FINISHED,
   SIGNAL_FAILED,
+  SIGNAL_SERVERS_CHANGED,
   N_SIGNALS
 };
 
@@ -58,6 +59,12 @@ void
 velocity_speedtest_emit_finished (VelocitySpeedtest *self)
 {
   g_signal_emit (self, signals[SIGNAL_FINISHED], 0);
+}
+
+void
+velocity_speedtest_emit_servers_changed (VelocitySpeedtest *self)
+{
+  g_signal_emit (self, signals[SIGNAL_SERVERS_CHANGED], 0);
 }
 
 void
@@ -125,6 +132,16 @@ velocity_speedtest_start (VelocitySpeedtest *self)
 }
 
 void
+velocity_speedtest_set_preferred_server (VelocitySpeedtest *self,
+                                         const char *base)
+{
+  g_return_if_fail (VELOCITY_IS_SPEEDTEST (self));
+
+  g_free (self->preferred_base);
+  self->preferred_base = (base != NULL && *base != '\0') ? g_strdup (base) : NULL;
+}
+
+void
 velocity_speedtest_cancel (VelocitySpeedtest *self)
 {
   g_return_if_fail (VELOCITY_IS_SPEEDTEST (self));
@@ -178,6 +195,8 @@ velocity_speedtest_finalize (GObject *object)
 
   g_clear_object (&self->session);
   g_clear_pointer (&self->candidates, g_ptr_array_unref);
+  g_clear_pointer (&self->servers, g_ptr_array_unref);
+  g_free (self->preferred_base);
   g_clear_pointer (&self->rtts, g_array_unref);
   g_clear_pointer (&self->upload_blob, g_bytes_unref);
   g_free (self->server_name);
@@ -208,6 +227,9 @@ velocity_speedtest_class_init (VelocitySpeedtestClass *klass)
   signals[SIGNAL_FAILED] =
       g_signal_new ("failed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
                     0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
+  signals[SIGNAL_SERVERS_CHANGED] =
+      g_signal_new ("servers-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+                    0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -217,7 +239,8 @@ velocity_speedtest_init (VelocitySpeedtest *self)
                                                  "Velocity/" PACKAGE_VERSION,
                                                  "timeout", 15,
                                                  NULL);
-  self->candidates = g_ptr_array_new_with_free_func ((GDestroyNotify) velocity_speedtest_candidate_free);
+  self->servers = g_ptr_array_new_with_free_func ((GDestroyNotify) velocity_speedtest_candidate_free);
+  self->candidates = g_ptr_array_new ();
   self->rtts = g_array_new (FALSE, FALSE, sizeof (double));
   self->phase = VELOCITY_PHASE_IDLE;
 }
