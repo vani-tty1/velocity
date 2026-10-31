@@ -127,9 +127,21 @@ velocity_application_quit_action (GSimpleAction *action,
 	g_application_quit (G_APPLICATION (self));
 }
 
+static void
+velocity_application_show_window_action (GSimpleAction *action,
+                                         GVariant      *parameter,
+                                         gpointer       user_data)
+{
+	GtkWindow *window = gtk_application_get_active_window (GTK_APPLICATION (user_data));
+
+	if (window != NULL)
+		gtk_window_present (window);
+}
+
 static const GActionEntry app_actions[] = {
 	{ "quit", velocity_application_quit_action },
 	{ "about", velocity_application_about_action },
+	{ "show-window", velocity_application_show_window_action },
 };
 
 static void

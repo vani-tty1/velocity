@@ -389,6 +389,34 @@ set_live_value (VelocityWindow *self,
 }
 
 static void
+notify_finished (VelocityWindow *self)
+{
+  GApplication *app = G_APPLICATION (gtk_window_get_application (GTK_WINDOW (self)));
+  g_autoptr (GNotification) notification = NULL;
+  g_autofree char *d = NULL;
+  g_autofree char *u = NULL;
+  g_autofree char *p = NULL;
+  g_autofree char *body = NULL;
+
+  // no point notifying someone who is looking at the window,
+  // unless we want to annoy people hehehehe
+  if (app == NULL || gtk_window_is_active (GTK_WINDOW (self)))
+    return;
+
+  d = format_mbps (velocity_speedtest_get_download (self->test));
+  u = format_mbps (velocity_speedtest_get_upload (self->test));
+  p = format_ms (velocity_speedtest_get_ping (self->test), TRUE);
+  body = g_strdup_printf (_ ("Download %s · Upload %s · Ping %s"), d, u, p);
+
+  notification = g_notification_new (_ ("Speed Test Complete"));
+  g_notification_set_body (notification, body);
+  g_notification_set_default_action (notification, "app.show-window");
+
+  // a new result replaces the old notification instead of stacking
+  g_application_send_notification (app, "test-finished", notification);
+}
+
+static void
 on_phase_changed (VelocitySpeedtest *test,
                   int phase,
                   VelocityWindow *self)
@@ -438,6 +466,7 @@ on_phase_changed (VelocitySpeedtest *test,
         gtk_label_set_label (self->upload_value, u);
       }
       history_save (self);
+      notify_finished (self);
       status = _ ("Test complete");
       button = _ ("Test Again");
       break;
@@ -517,6 +546,8 @@ on_start_clicked (VelocityWindow *self)
       gtk_label_set_label (self->ping_value, "—");
       gtk_label_set_label (self->jitter_value, "—");
       gtk_label_set_label (self->server_label, _ ("Ready"));
+      g_application_withdraw_notification (G_APPLICATION (gtk_window_get_application (GTK_WINDOW (self))),
+                                           "test-finished");
       velocity_speedtest_start (self->test);
       break;
     default:
@@ -600,4 +631,3 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
   velocity_speedtest_load_servers (self->test);
 }
-
