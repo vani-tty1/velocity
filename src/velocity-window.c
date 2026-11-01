@@ -57,6 +57,7 @@ struct _VelocityWindow
   double gauge_fraction;
   double gauge_target;
   AdwAnimation *gauge_animation;
+  GdkRGBA accent;
 };
 
 G_DEFINE_FINAL_TYPE (VelocityWindow, velocity_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -71,6 +72,27 @@ mbps_to_fraction (double mbps)
 }
 
 static void
+update_accent (VelocityWindow *self)
+{
+  AdwStyleManager *manager = adw_style_manager_get_default ();
+  GdkRGBA *rgba = adw_style_manager_get_accent_color_rgba (manager);
+
+  // the getter returns a newly allocated GdkRGBA
+  self->accent = *rgba;
+  gdk_rgba_free (rgba);
+
+  gtk_widget_queue_draw (GTK_WIDGET (self->gauge));
+}
+
+static void
+on_accent_changed (AdwStyleManager *manager,
+                   GParamSpec      *pspec,
+                   VelocityWindow  *self)
+{
+  update_accent (self);
+}
+
+static void
 gauge_draw (GtkDrawingArea *area,
             cairo_t *cr,
             int width,
@@ -79,7 +101,7 @@ gauge_draw (GtkDrawingArea *area,
 {
   VelocityWindow *self = user_data;
   GtkWidget *widget = GTK_WIDGET (area);
-  GdkRGBA fg, accent;
+  GdkRGBA fg;
   double cx = width / 2.0;
   double cy = height / 2.0;
   double line = 16.0;
@@ -88,12 +110,6 @@ gauge_draw (GtkDrawingArea *area,
   double sweep = 1.5 * G_PI;
 
   gtk_widget_get_color (widget, &fg);
-
-  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-  if (!gtk_style_context_lookup_color (gtk_widget_get_style_context (widget),
-                                       "accent_bg_color", &accent))
-    accent = (GdkRGBA) { 0.21, 0.52, 0.89, 1.0 };
-  G_GNUC_END_IGNORE_DEPRECATIONS
 
   cairo_set_line_width (cr, line);
   cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
@@ -104,7 +120,7 @@ gauge_draw (GtkDrawingArea *area,
 
   if (self->gauge_fraction > 0.002)
     {
-      gdk_cairo_set_source_rgba (cr, &accent);
+      gdk_cairo_set_source_rgba (cr, &self->accent);
       cairo_arc (cr, cx, cy, radius, start,
                  start + sweep * self->gauge_fraction);
       cairo_stroke (cr);
@@ -621,6 +637,11 @@ velocity_window_init (VelocityWindow *self)
   pango_attr_list_unref (big);
 
   gtk_drawing_area_set_draw_func (self->gauge, gauge_draw, self, NULL);
+
+  update_accent (self);
+  g_signal_connect_object (adw_style_manager_get_default (),
+                           "notify::accent-color-rgba",
+                           G_CALLBACK (on_accent_changed), self, 0);
 
   history_load (self);
 
