@@ -10,31 +10,34 @@
     <p>A simple app to test internet connection speed using LibreSpeed.</p>
   </description>
 
-  <developer id="tld.vendor">
+  <developer id="io.github.vani_tty1">
     <name>Giovanni Rafanan</name>
   </developer>
 
   <url type="homepage">https://vani-tty1.github.io/velocity/</url>
   <url type="vcs-browser">https://github.com/vani-tty1/velocity</url>
   <url type="bugtracker">https://github.com/vani-tty1/velocity/issues</url>
-  <!-- Should link a FAQ page for this software, to answer some of the most-asked questions in detail -->
-  <!-- URLs of this type should point to a webpage where users can submit or modify translations of the upstream project -->
   <url type="translate">https://github.com/vani-tty1/velocity/tree/main/po</url>
   <url type="faq">https://github.com/vani-tty1/velocity/blob/main/README.md</url>
-  <!-- Should provide a web link to an online user's reference, a software manual or help page -->
   <url type="help">https://github.com/vani-tty1/velocity/discussions</url>
-  <!-- This could for example be an HTTPS URL to an online form or a page describing how to contact the developer -->
   <url type="contact">https://github.com/vani-tty1</url>
   <!-- URLs of this type should point to a webpage showing information on how to contribute to the described software project -->
   <!-- <url type="contribute">https://example.org/contribute</url> -->
 
   <translation type="gettext">velocity</translation>
-  <!-- All graphical applications having a desktop file must have this tag in the MetaInfo.
-     If this is present, appstreamcli compose will pull icons, keywords and categories from the desktop file. -->
   <launchable type="desktop-id">io.github.vani_tty1.velocity.desktop</launchable>
   <content_rating type="oars-1.1" />
 
-  <!-- Applications should set a brand color in both light and dark variants like so -->
+  <recommends>
+    <display_length compare="ge">360</display_length>
+  </recommends>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+
   <branding>
     <color type="primary" scheme_preference="light">#d5d0e3</color>
     <color type="primary" scheme_preference="dark">#474154</color>
@@ -83,3 +86,4 @@
   </releases>
 
 </component>
+

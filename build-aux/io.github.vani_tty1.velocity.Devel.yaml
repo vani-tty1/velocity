@@ -1,4 +1,4 @@
-id: io.github.vani_tty1.velocity
+id: io.github.vani_tty1.velocity.Devel
 runtime: org.gnome.Platform
 runtime-version: '51'
 sdk: org.gnome.Sdk

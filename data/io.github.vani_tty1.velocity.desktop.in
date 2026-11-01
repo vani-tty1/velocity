@@ -1,10 +1,12 @@
 [Desktop Entry]
 Name=Velocity
+Comment=Test your internet speed
 Exec=velocity
 Icon=io.github.vani_tty1.velocity
 Terminal=false
 Type=Application
-Categories=Utility;
-Keywords=GTK;
+Categories=Utility;Network;
+Keywords=speedtest;ping;bandwidth
 StartupNotify=true
 DBusActivatable=true
+X-GNOME-UsesNotifications=true
