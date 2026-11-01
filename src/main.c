@@ -25,18 +25,19 @@
 #include "velocity-application.h"
 
 int
-main (int   argc,
+main (int argc,
       char *argv[])
 {
-	g_autoptr(VelocityApplication) app = NULL;
-	int ret;
+  g_autoptr (VelocityApplication) app = NULL;
+  int ret;
 
-	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
-	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
-	textdomain (GETTEXT_PACKAGE);
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
 
-	app = velocity_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
-	ret = g_application_run (G_APPLICATION (app), argc, argv);
+  app = velocity_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
+  ret = g_application_run (G_APPLICATION (app), argc, argv);
 
-	return ret;
+  return ret;
 }
+

@@ -24,11 +24,12 @@
 
 G_BEGIN_DECLS
 
-#define VELOCITY_TYPE_APPLICATION (velocity_application_get_type())
+#define VELOCITY_TYPE_APPLICATION (velocity_application_get_type ())
 
 G_DECLARE_FINAL_TYPE (VelocityApplication, velocity_application, VELOCITY, APPLICATION, AdwApplication)
 
-VelocityApplication *velocity_application_new (const char        *application_id,
-                                               GApplicationFlags  flags);
+VelocityApplication *velocity_application_new (const char *application_id,
+                                               GApplicationFlags flags);
 
 G_END_DECLS
+

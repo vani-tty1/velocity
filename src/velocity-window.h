@@ -24,7 +24,7 @@
 
 G_BEGIN_DECLS
 
-#define VELOCITY_TYPE_WINDOW (velocity_window_get_type())
+#define VELOCITY_TYPE_WINDOW (velocity_window_get_type ())
 
 G_DECLARE_FINAL_TYPE (VelocityWindow, velocity_window, VELOCITY, WINDOW, AdwApplicationWindow)
 

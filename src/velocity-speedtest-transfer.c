@@ -24,26 +24,27 @@
 
 #include "velocity-speedtest-private.h"
 
-#define DL_STREAMS        4
-#define UL_STREAMS        3
-#define TEST_SECONDS      10.0
-#define WARMUP_SECONDS    1.5
-#define TICK_MS           200
-#define DL_CHUNK_MB       100
-#define UL_BLOB_BYTES     (16 * 1024 * 1024)
-#define READ_BUF_BYTES    (64 * 1024)
+#define DL_STREAMS 4
+#define UL_STREAMS 3
+#define TEST_SECONDS 10.0
+#define WARMUP_SECONDS 1.5
+#define TICK_MS 200
+#define DL_CHUNK_MB 100
+#define UL_BLOB_BYTES (16 * 1024 * 1024)
+#define READ_BUF_BYTES (64 * 1024)
 
 static void finish_transfer (VelocitySpeedtest *self);
 
-typedef struct {
+typedef struct
+{
   VelocitySpeedtest *self;
-  guint              generation;
-  VelocityPhase      phase;
-  GCancellable      *cancellable;
-  SoupSession       *session;
-  SoupMessage       *msg;
-  GInputStream      *in;
-  guchar            *buf;
+  guint generation;
+  VelocityPhase phase;
+  GCancellable *cancellable;
+  SoupSession *session;
+  SoupMessage *msg;
+  GInputStream *in;
+  guchar *buf;
 } Stream;
 
 static void stream_start (Stream *s);
@@ -103,12 +104,12 @@ stream_restart (Stream *s)
 }
 
 static void
-dl_read_cb (GObject      *source,
+dl_read_cb (GObject *source,
             GAsyncResult *res,
-            gpointer      user_data)
+            gpointer user_data)
 {
   Stream *s = user_data;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   gssize n;
 
   n = g_input_stream_read_finish (G_INPUT_STREAM (source), res, &error);
@@ -132,12 +133,12 @@ dl_read_cb (GObject      *source,
 }
 
 static void
-dl_sent_cb (GObject      *source,
+dl_sent_cb (GObject *source,
             GAsyncResult *res,
-            gpointer      user_data)
+            gpointer user_data)
 {
   Stream *s = user_data;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   s->in = soup_session_send_finish (SOUP_SESSION (source), res, &error);
 
@@ -154,8 +155,8 @@ dl_sent_cb (GObject      *source,
 
 static void
 ul_wrote_cb (SoupMessage *msg,
-             guint        chunk_size,
-             gpointer     user_data)
+             guint chunk_size,
+             gpointer user_data)
 {
   Stream *s = user_data;
 
@@ -164,13 +165,13 @@ ul_wrote_cb (SoupMessage *msg,
 }
 
 static void
-ul_done_cb (GObject      *source,
+ul_done_cb (GObject *source,
             GAsyncResult *res,
-            gpointer      user_data)
+            gpointer user_data)
 {
   Stream *s = user_data;
-  g_autoptr(GError) error = NULL;
-  g_autoptr(GBytes) body = NULL;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GBytes) body = NULL;
 
   body = soup_session_send_and_read_finish (SOUP_SESSION (source), res, &error);
 
@@ -293,7 +294,7 @@ tick_cb (gpointer user_data)
 
 void
 velocity_speedtest_start_transfer (VelocitySpeedtest *self,
-                                   VelocityPhase      phase)
+                                   VelocityPhase phase)
 {
   int n = phase == VELOCITY_PHASE_DOWNLOAD ? DL_STREAMS : UL_STREAMS;
 
@@ -338,3 +339,4 @@ velocity_speedtest_start_transfer (VelocitySpeedtest *self,
       stream_start (s);
     }
 }
+

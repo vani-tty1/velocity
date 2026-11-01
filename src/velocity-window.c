@@ -86,8 +86,8 @@ update_accent (VelocityWindow *self)
 
 static void
 on_accent_changed (AdwStyleManager *manager,
-                   GParamSpec      *pspec,
-                   VelocityWindow  *self)
+                   GParamSpec *pspec,
+                   VelocityWindow *self)
 {
   update_accent (self);
 }
@@ -652,3 +652,4 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
   velocity_speedtest_load_servers (self->test);
 }
+
