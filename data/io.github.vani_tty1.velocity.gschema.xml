@@ -5,5 +5,11 @@
 			<default>""</default>
 			<summary>Preferred speed test server</summary>
 		</key>
+		<key name="accent-color" type="s">
+			<default>'default'</default>
+			<summary>Accent color</summary>
+			<description>App accent color: 'default' (follow the system), 'blue', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple' or 'slate'</description>
+		</key>
 	</schema>
 </schemalist>
+
