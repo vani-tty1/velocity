@@ -18,4 +18,4 @@ SERVER_URL=""
 
 trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT INT TERM
 
-VELOCITY_SERVER_URL="$SERVER_URL" ./build/src/velocity "$@"
+G_MESSAGES_DEBUG=all VELOCITY_SERVER_URL="$SERVER_URL" ./build/src/velocity "$@"
