@@ -26,7 +26,7 @@
 
   <translation type="gettext">velocity</translation>
   <launchable type="desktop-id">io.github.vani_tty1.velocity.desktop</launchable>
-  <content_rating type="oars-1.1" />
+  <content_rating type="oars-1.1"/>
 
   <recommends>
     <display_length compare="ge">360</display_length>
@@ -59,6 +59,18 @@
   </screenshots>
 
   <releases>
+
+    <release version="0.3.0" date="2026-11-08">
+      <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
+      <description translate="no">
+        <p>This is a stable release with following changes: </p>
+        <ul>
+          <li>Remove redundant debug info in troubleshooting of about_dialog</li>
+          <li>App when unfocused, now sends notification when test is finished</li>
+          <li>New accent color settings in the preferences dialog</li>
+        </ul>
+      </description>
+    </release>
 
     <release version="0.2.0" date="2026-10-29">
       <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
