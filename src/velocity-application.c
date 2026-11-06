@@ -19,7 +19,9 @@
  */
 
 #include "config.h"
+#include "velocity-accent.h"
 #include "velocity-application.h"
+#include "velocity-preferences-dialog.h"
 #include "velocity-window.h"
 #include <glib/gi18n.h>
 
@@ -61,11 +63,19 @@ velocity_application_activate (GApplication *app)
 }
 
 static void
+velocity_application_startup (GApplication *app)
+{
+  G_APPLICATION_CLASS (velocity_application_parent_class)->startup (app);
+  velocity_accent_init ();
+}
+
+static void
 velocity_application_class_init (VelocityApplicationClass *klass)
 {
   GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
 
   app_class->activate = velocity_application_activate;
+  app_class->startup = velocity_application_startup;
 }
 
 static void
@@ -136,10 +146,22 @@ velocity_application_show_window_action (GSimpleAction *action,
     gtk_window_present (window);
 }
 
+static void
+velocity_application_preferences_action (GSimpleAction *action,
+                                         GVariant *parameter,
+                                         gpointer user_data)
+{
+  GtkWindow *parent = gtk_application_get_active_window (GTK_APPLICATION (user_data));
+
+  if (parent != NULL)
+    velocity_show_preferences_dialog (parent);
+}
+
 static const GActionEntry app_actions[] = {
   { "quit", velocity_application_quit_action },
   { "about", velocity_application_about_action },
   { "show-window", velocity_application_show_window_action },
+  { "preferences", velocity_application_preferences_action },
 };
 
 static void
@@ -152,5 +174,8 @@ velocity_application_init (VelocityApplication *self)
   gtk_application_set_accels_for_action (GTK_APPLICATION (self),
                                          "app.quit",
                                          (const char *[]) { "<control>q", NULL });
+  gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+                                         "app.preferences",
+                                         (const char *[]) { "<control>comma", NULL });
 }
 

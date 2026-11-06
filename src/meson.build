@@ -2,6 +2,7 @@ blueprints = custom_target('blueprints',
   input: files(
     'velocity-window.blp',
     'shortcuts-dialog.blp',
+    'preferences-dialog.blp',
   ),
   output: '.',
   command: [find_program('blueprint-compiler'), 'batch-compile', '@OUTPUT@', '@CURRENT_SOURCE_DIR@', '@INPUT@'],
@@ -9,7 +10,9 @@ blueprints = custom_target('blueprints',
 
 velocity_sources = [
   'main.c',
+  'velocity-accent.c',
   'velocity-application.c',
+  'velocity-preferences-dialog.c',
   'velocity-window.c',
   'velocity-speedtest.c',
   'velocity-speedtest-ping.c',

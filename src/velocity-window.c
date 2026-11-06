@@ -25,6 +25,7 @@
 #include <json-glib/json-glib.h>
 #include <math.h>
 
+#include "velocity-accent.h"
 #include "velocity-speedtest.h"
 #include "velocity-window.h"
 #define GAUGE_MAX_MBPS 1000.0
@@ -74,12 +75,17 @@ mbps_to_fraction (double mbps)
 static void
 update_accent (VelocityWindow *self)
 {
-  AdwStyleManager *manager = adw_style_manager_get_default ();
-  GdkRGBA *rgba = adw_style_manager_get_accent_color_rgba (manager);
+  g_autofree char *id = g_settings_get_string (self->settings, "accent-color");
 
-  // the getter returns a newly allocated GdkRGBA
-  self->accent = *rgba;
-  gdk_rgba_free (rgba);
+  if (!velocity_accent_get_rgba (id, &self->accent))
+    {
+      AdwStyleManager *manager = adw_style_manager_get_default ();
+      GdkRGBA *rgba = adw_style_manager_get_accent_color_rgba (manager);
+
+      // the getter returns a newly allocated GdkRGBA
+      self->accent = *rgba;
+      gdk_rgba_free (rgba);
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (self->gauge));
 }
@@ -88,6 +94,14 @@ static void
 on_accent_changed (AdwStyleManager *manager,
                    GParamSpec *pspec,
                    VelocityWindow *self)
+{
+  update_accent (self);
+}
+
+static void
+on_accent_setting_changed (GSettings *settings,
+                           const char *key,
+                           VelocityWindow *self)
 {
   update_accent (self);
 }
@@ -642,6 +656,8 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect_object (adw_style_manager_get_default (),
                            "notify::accent-color-rgba",
                            G_CALLBACK (on_accent_changed), self, 0);
+  g_signal_connect_object (self->settings, "changed::accent-color",
+                           G_CALLBACK (on_accent_setting_changed), self, 0);
 
   history_load (self);
 

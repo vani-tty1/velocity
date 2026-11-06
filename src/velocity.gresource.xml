@@ -3,6 +3,9 @@
   <gresource prefix="/io/github/vani_tty1/velocity">
     <file preprocess="xml-stripblanks">velocity-window.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
+    <file preprocess="xml-stripblanks">preferences-dialog.ui</file>
+    <file>style.css</file>
     <file>io.github.vani_tty1.velocity.metainfo.xml</file>
   </gresource>
 </gresources>
+
