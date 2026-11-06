@@ -1,5 +1,5 @@
 Name:           velocity
-Version:        0.2.0
+Version:        0.3.0
 Release:        1%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
@@ -14,7 +14,7 @@ Requires:       gtk4 libadwaita >= 1.8
 Requires:       libsoup3 json-glib
 
 %description
-A speedtest app using LibreSpeed
+A speedtest app using LibreSpeed and Ookla servers
 
 %prep
 %autosetup
@@ -41,8 +41,4 @@ A speedtest app using LibreSpeed
 %{_datadir}/metainfo/io.github.vani_tty1.velocity.metainfo.xml
 
 %changelog
-* Fri Oct 29 2026 Giovanni Rafanan <giovannirafanan609@gmail.com> - 0.2.0-1
-- New Results page
-- Results are now exportable via a JSON file
-- Better auto-selection of test servers
-- New server picker to choose preferred test server
+%autochangelog
