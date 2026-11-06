@@ -22,8 +22,5 @@ workflow run in the [Github Actions](https://github.com/vani-tty1/velocity/actio
 
 ### Building from source
 
-You can use the [bash script](start.sh) for automatically building and launching it,
-```bash
-./start.sh
-```
+You can use the bash script `start.sh` for automatically building and launching it.
 
