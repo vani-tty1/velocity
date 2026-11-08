@@ -575,7 +575,6 @@ on_start_clicked (VelocityWindow *self)
       gtk_label_set_label (self->upload_value, "—");
       gtk_label_set_label (self->ping_value, "—");
       gtk_label_set_label (self->jitter_value, "—");
-      gtk_label_set_label (self->server_label, _ ("Ready"));
       g_application_withdraw_notification (G_APPLICATION (gtk_window_get_application (GTK_WINDOW (self))),
                                            "test-finished");
       velocity_speedtest_start (self->test);
