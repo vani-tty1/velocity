@@ -39,6 +39,14 @@ typedef enum
   VELOCITY_PHASE_FAILED,
 } VelocityPhase;
 
+// Which kind of speed test server an endpoint is.
+typedef enum
+{
+  VELOCITY_BACKEND_LIBRESPEED,
+  VELOCITY_BACKEND_OOKLA,
+  VELOCITY_N_BACKENDS,
+} VelocityBackend;
+
 VelocitySpeedtest *velocity_speedtest_new (void);
 
 void velocity_speedtest_start (VelocitySpeedtest *self);

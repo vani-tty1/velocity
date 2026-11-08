@@ -192,7 +192,10 @@ stream_start (Stream *s)
 
   if (s->phase == VELOCITY_PHASE_DOWNLOAD)
     {
-      g_autofree char *q = g_strdup_printf ("ckSize=%d&cors=true", DL_CHUNK_MB);
+      // ckSize/cors are LibreSpeed parameters; Ookla serves fixed files
+      g_autofree char *q = self->backend == VELOCITY_BACKEND_LIBRESPEED
+                               ? g_strdup_printf ("ckSize=%d&cors=true", DL_CHUNK_MB)
+                               : NULL;
 
       url = velocity_speedtest_build_url (self, self->dl_path, q);
       s->msg = soup_message_new (SOUP_METHOD_GET, url);

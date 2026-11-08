@@ -26,7 +26,6 @@
 
 G_BEGIN_DECLS
 
-
 typedef struct
 {
   char *name;
@@ -35,6 +34,8 @@ typedef struct
   char *ul_path;
   char *ping_path;
   double rtt;
+  VelocityBackend backend;
+  guint rank;
 } Candidate;
 
 struct _VelocitySpeedtest
@@ -54,6 +55,7 @@ struct _VelocitySpeedtest
   char *dl_path;
   char *ul_path;
   char *ping_path;
+  VelocityBackend backend;
 
   double ping;
   double jitter;
@@ -62,6 +64,8 @@ struct _VelocitySpeedtest
 
   GPtrArray *servers;
   GPtrArray *candidates;
+  gboolean loaded[VELOCITY_N_BACKENDS];
+  int lists_pending;
   char *preferred_base;
   int probes_pending;
 
