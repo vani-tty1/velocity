@@ -3,7 +3,7 @@ using Adw 1;
 
 template $VelocityWindow: Adw.ApplicationWindow {
   title: _("Velocity");
-  default-width: 500;
+  default-width: 380;
   width-request: 360;
   height-request: 294;
   default-height: 820;
@@ -48,7 +48,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
               margin-end: 24;
 
               Label server_label {
-                label: _("Ready");
+                label: _("");
                 ellipsize: end;
               }
 
@@ -87,7 +87,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
               }
 
               Label phase_label {
-                label: _("Press Start to measure your connection");
+                label: _("Click Start to measure your connection");
                 wrap: true;
                 justify: center;
 
