@@ -21,8 +21,7 @@
   <url type="faq">https://github.com/vani-tty1/velocity/blob/main/README.md</url>
   <url type="help">https://github.com/vani-tty1/velocity/discussions</url>
   <url type="contact">https://github.com/vani-tty1</url>
-  <!-- URLs of this type should point to a webpage showing information on how to contribute to the described software project -->
-  <!-- <url type="contribute">https://example.org/contribute</url> -->
+  <url type="contribute">https://github.com/vani-tty1/velocity/blob/main/CONTRIBUTING.md</url>
 
   <translation type="gettext">velocity</translation>
   <launchable type="desktop-id">io.github.vani_tty1.velocity.desktop</launchable>
