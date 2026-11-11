@@ -7,7 +7,7 @@
   <name>Velocity</name>
   <summary>Test your internet speed</summary>
   <description>
-    <p>A simple app to test internet connection speed using LibreSpeed.</p>
+    <p>A simple app to test internet connection speed using LibreSpeed and Speedtest.net servers.</p>
   </description>
 
   <developer id="io.github.vani_tty1">
@@ -49,15 +49,23 @@
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/vani-tty1/vani-tty1.github.io/main/public/velocity2.png</image>
-      <caption>Results Window</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/vani-tty1/vani-tty1.github.io/main/public/velocity3.png</image>
-      <caption>Velocity in Narrow Window</caption>
+      <caption>Narrow Window</caption>
     </screenshot>
   </screenshots>
 
   <releases>
+
+    <release version="0.4.0" date="2026-11-11">
+      <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
+      <description translate="no">
+        <p>This is a stable release with following changes: </p>
+        <ul>
+          <li>Added support for testing against speedtest.net servers</li>
+          <li>Results can now be opened to show their full details.</li>
+          <li>The Test page now shows which server is being used instead of  just "Ready"</li>
+        </ul>
+      </description>
+    </release>
 
     <release version="0.3.0" date="2026-11-08">
       <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
