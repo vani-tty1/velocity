@@ -201,25 +201,97 @@ history_path (void)
 static GtkWidget *
 history_row_new (JsonObject *entry)
 {
-  gint64 ts = json_object_get_int_member_with_default (entry, "timestamp", 0);
-  const char *server = json_object_get_string_member_with_default (entry, "server", "");
   double download = json_object_get_double_member_with_default (entry, "download", 0.0);
   double upload = json_object_get_double_member_with_default (entry, "upload", 0.0);
-  double ping = json_object_get_double_member_with_default (entry, "ping", 0.0);
   g_autofree char *d = format_mbps (download);
   g_autofree char *u = format_mbps (upload);
-  g_autofree char *p = format_ms (ping, TRUE);
   g_autofree char *title = g_strdup_printf ("↓ %s   ↑ %s", d, u);
-  g_autoptr (GDateTime) dt = g_date_time_new_from_unix_local (ts);
-  g_autofree char *when = g_date_time_format (dt, "%x %H:%M");
-  g_autofree char *subtitle = g_strdup_printf ("%s · %s · %s", when, p, server);
   GtkWidget *row = adw_action_row_new ();
 
   adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
   adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
-  adw_action_row_set_subtitle (ADW_ACTION_ROW (row), subtitle);
+
+  // clicking a row opens the full details, see on_history_row_activated
+  adw_action_row_add_suffix (ADW_ACTION_ROW (row),
+                             gtk_image_new_from_icon_name ("go-next-symbolic"));
+  gtk_list_box_row_set_activatable (GTK_LIST_BOX_ROW (row), TRUE);
+  g_object_set_data_full (G_OBJECT (row), "entry",
+                          json_object_ref (entry),
+                          (GDestroyNotify) json_object_unref);
 
   return row;
+}
+
+static void
+details_add_row (AdwPreferencesGroup *group,
+                 const char *title,
+                 const char *value)
+{
+  GtkWidget *row = adw_action_row_new ();
+
+  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
+  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
+  adw_action_row_set_subtitle (ADW_ACTION_ROW (row), value);
+  gtk_widget_add_css_class (row, "property");
+  adw_preferences_group_add (group, row);
+}
+
+static void
+on_history_row_activated (VelocityWindow *self,
+                          GtkListBoxRow *row)
+{
+  JsonObject *entry = g_object_get_data (G_OBJECT (row), "entry");
+  AdwDialog *dialog;
+  GtkWidget *toolbar;
+  GtkWidget *page;
+  GtkWidget *group;
+  g_autoptr (GDateTime) dt = NULL;
+  g_autofree char *when = NULL;
+  g_autofree char *d = NULL;
+  g_autofree char *u = NULL;
+  g_autofree char *p = NULL;
+  const char *server;
+
+  if (entry == NULL)
+    return;
+
+  dt = g_date_time_new_from_unix_local (json_object_get_int_member_with_default (entry, "timestamp", 0));
+  when = g_date_time_format (dt, "%x %X");
+  server = json_object_get_string_member_with_default (entry, "server", "");
+  d = format_mbps (json_object_get_double_member_with_default (entry, "download", 0.0));
+  u = format_mbps (json_object_get_double_member_with_default (entry, "upload", 0.0));
+  p = format_ms (json_object_get_double_member_with_default (entry, "ping", 0.0), TRUE);
+
+  group = adw_preferences_group_new ();
+  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Date"), when);
+  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Server"),
+                   server[0] != '\0' ? server : _ ("Unknown"));
+  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Download"), d);
+  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Upload"), u);
+  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Ping"), p);
+
+  // older history entries were saved without jitter
+  if (json_object_has_member (entry, "jitter"))
+    {
+      g_autofree char *j = g_strdup_printf (_ ("%.1f ms"),
+                                            json_object_get_double_member (entry, "jitter"));
+
+      details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Jitter"), j);
+    }
+
+  page = adw_preferences_page_new ();
+  adw_preferences_page_add (ADW_PREFERENCES_PAGE (page), ADW_PREFERENCES_GROUP (group));
+
+  toolbar = adw_toolbar_view_new ();
+  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar), adw_header_bar_new ());
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar), page);
+
+  dialog = adw_dialog_new ();
+  adw_dialog_set_title (dialog, _ ("Test Details"));
+  adw_dialog_set_content_width (dialog, 400);
+  adw_dialog_set_content_height (dialog, 420);
+  adw_dialog_set_child (dialog, toolbar);
+  adw_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 static char *
@@ -285,6 +357,7 @@ history_save (VelocityWindow *self)
   json_object_set_double_member (entry, "download", velocity_speedtest_get_download (self->test));
   json_object_set_double_member (entry, "upload", velocity_speedtest_get_upload (self->test));
   json_object_set_double_member (entry, "ping", velocity_speedtest_get_ping (self->test));
+  json_object_set_double_member (entry, "jitter", velocity_speedtest_get_jitter (self->test));
   json_array_add_object_element (self->history, entry);
 
   gtk_list_box_prepend (self->history_list, history_row_new (entry));
@@ -627,6 +700,7 @@ velocity_window_class_init (VelocityWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, on_start_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_server_selected);
   gtk_widget_class_bind_template_callback (widget_class, on_export_clicked);
+  gtk_widget_class_bind_template_callback (widget_class, on_history_row_activated);
 }
 
 static void

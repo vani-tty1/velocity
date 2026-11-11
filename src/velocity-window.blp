@@ -3,10 +3,10 @@ using Adw 1;
 
 template $VelocityWindow: Adw.ApplicationWindow {
   title: _("Velocity");
-  default-width: 380;
+  default-width: 400;
   width-request: 360;
   height-request: 294;
-  default-height: 820;
+  default-height: 725;
 
   content: Adw.ToolbarView {
     [top]
@@ -33,6 +33,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
 
         child: ScrolledWindow {
           hscrollbar-policy: never;
+          vscrollbar-policy: never;
 
           child: Adw.Clamp {
             maximum-size: 480;
@@ -40,10 +41,10 @@ template $VelocityWindow: Adw.ApplicationWindow {
 
             child: Box {
               orientation: vertical;
-              spacing: 18;
+              spacing: 12;
               valign: center;
               margin-top: 12;
-              margin-bottom: 24;
+              margin-bottom: 12;
               margin-start: 24;
               margin-end: 24;
 
@@ -131,11 +132,11 @@ template $VelocityWindow: Adw.ApplicationWindow {
               }
 
               Grid {
-                column-spacing: 12;
-                row-spacing: 12;
+                column-spacing: 8;
+                row-spacing: 8;
                 column-homogeneous: true;
                 row-homogeneous: true;
-                margin-top: 12;
+                margin-top: 0;
 
                 Box {
                   layout {
@@ -333,6 +334,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
 
                   ListBox history_list {
                     selection-mode: none;
+                    row-activated => $on_history_row_activated() swapped;
 
                     styles [
                       "boxed-list",

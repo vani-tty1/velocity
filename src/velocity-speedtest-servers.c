@@ -27,14 +27,14 @@
 #define LIBRESPEED_LIST_URL "https://librespeed.org/backend-servers/servers.php"
 #endif
 #ifndef OOKLA_LIST_URL
-#define OOKLA_LIST_URL "https://www.speedtest.net/api/js/servers?engine=js&limit=20"
+#define OOKLA_LIST_URL "https://www.speedtest.net/api/js/servers?engine=js&limit=100"
 #endif
 #ifndef OOKLA_SCHEME
 #define OOKLA_SCHEME "https"
 #endif
 
-#define MAX_LIBRESPEED_CANDIDATES 40
-#define MAX_OOKLA_CANDIDATES 40
+#define MAX_LIBRESPEED_CANDIDATES 100
+#define MAX_OOKLA_CANDIDATES 100
 
 void
 velocity_speedtest_candidate_free (Candidate *c)
