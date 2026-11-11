@@ -1,5 +1,5 @@
 Name:           velocity
-Version:        0.3.0
+Version:        0.4.0
 Release:        1%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
