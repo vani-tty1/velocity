@@ -33,8 +33,8 @@
 #define OOKLA_SCHEME "https"
 #endif
 
-#define MAX_LIBRESPEED_CANDIDATES 100
-#define MAX_OOKLA_CANDIDATES 100
+#define MAX_LIBRESPEED_CANDIDATES 10
+#define MAX_OOKLA_CANDIDATES 10
 
 void
 velocity_speedtest_candidate_free (Candidate *c)
@@ -560,4 +560,3 @@ velocity_speedtest_select_server (VelocitySpeedtest *self)
         fetch_list (self, b, TRUE);
     }
 }
-
