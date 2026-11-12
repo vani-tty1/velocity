@@ -1,6 +1,6 @@
 Name:           velocity
 Version:        0.4.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
 URL:            https://github.com/vani-tty1/velocity
