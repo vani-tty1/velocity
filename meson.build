@@ -91,6 +91,7 @@ add_project_arguments(project_c_args, language: 'c')
 
 subdir('data')
 subdir('src')
+subdir('tests')
 subdir('po')
 
 gnome.post_install(
