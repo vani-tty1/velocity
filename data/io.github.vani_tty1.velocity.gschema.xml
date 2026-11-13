@@ -5,6 +5,11 @@
 			<default>""</default>
 			<summary>Preferred speed test server</summary>
 		</key>
+		<key name="best-server" type="(sissssx)">
+			<default>('', 0, '', '', '', '', 0)</default>
+			<summary>Cached best speed test server</summary>
+			<description>The lowest-latency server found by the last background probe. Refreshed automatically once it expires.</description>
+		</key>
 		<key name="accent-color" type="s">
 			<default>'default'</default>
 			<summary>Accent color</summary>
