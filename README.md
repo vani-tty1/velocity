@@ -21,7 +21,7 @@ workflow run in the [Github Actions](https://github.com/vani-tty1/velocity/actio
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/velocity-speedtest.svg)](https://repology.org/project/velocity-speedtest/versions)
 
-### Building from source
+## Building from source
 
 You can use the bash script [`start.sh`](start.sh) for automatically building and launching it.
 
@@ -31,7 +31,7 @@ For development you can point Velocity at one of the mock servers with
 build-aux/mock-ookla.py` are local stand-ins.
 
 
-### License
+## License
 
 [![Large GPLv3 logo with “Free as in Freedom”](https://www.gnu.org/graphics/gplv3-with-text-136x68.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
