@@ -69,6 +69,18 @@ struct _VelocitySpeedtest
   char *preferred_base;
   int probes_pending;
 
+  // best server, probed in the background so that Start can skip the lookup
+  GCancellable *preload_cancellable;
+  guint preload_generation;
+  guint preload_next;
+  int preload_pending;
+  Candidate *preload_best;
+  double preload_best_rtt;
+  Candidate *best_cached;
+  gint64 best_cached_at;
+  guint preload_timeout_id;
+  gboolean waiting_for_preload;
+
   GArray *rtts;
   int ping_sent;
 
@@ -99,10 +111,18 @@ void velocity_speedtest_emit_progress (VelocitySpeedtest *self,
                                        double value);
 void velocity_speedtest_emit_finished (VelocitySpeedtest *self);
 void velocity_speedtest_emit_servers_changed (VelocitySpeedtest *self);
+void velocity_speedtest_emit_best_server_changed (VelocitySpeedtest *self);
+void velocity_speedtest_emit_preload_changed (VelocitySpeedtest *self);
 
 // server list, selection and latency probing
 void velocity_speedtest_select_server (VelocitySpeedtest *self);
 void velocity_speedtest_candidate_free (Candidate *c);
+
+// background probe of the best server
+void velocity_speedtest_preload_best_server (VelocitySpeedtest *self);
+void velocity_speedtest_cancel_preload (VelocitySpeedtest *self);
+void velocity_speedtest_invalidate_best_server (VelocitySpeedtest *self);
+void velocity_speedtest_watch_network (VelocitySpeedtest *self);
 
 // latency and jitter measurement
 void velocity_speedtest_start_ping (VelocitySpeedtest *self);

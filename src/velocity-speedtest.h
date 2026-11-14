@@ -58,6 +58,15 @@ guint velocity_speedtest_get_n_servers (VelocitySpeedtest *self);
 const char *velocity_speedtest_get_server_name_at (VelocitySpeedtest *self, guint index);
 const char *velocity_speedtest_get_server_base_at (VelocitySpeedtest *self, guint index);
 
+// Name of the server that was probed in the background, or NULL if none is ready.
+const char *velocity_speedtest_get_best_server (VelocitySpeedtest *self);
+gboolean velocity_speedtest_is_preloading (VelocitySpeedtest *self);
+
+// Save and restore the cached best server, as a "(sissssx)" variant, so it
+// survives restarts. Restoring ignores anything expired or malformed.
+GVariant *velocity_speedtest_get_best_server_state (VelocitySpeedtest *self);
+void velocity_speedtest_set_best_server_state (VelocitySpeedtest *self, GVariant *state);
+
 VelocityPhase velocity_speedtest_get_phase (VelocitySpeedtest *self);
 const char *velocity_speedtest_get_server (VelocitySpeedtest *self);
 double velocity_speedtest_get_ping (VelocitySpeedtest *self);

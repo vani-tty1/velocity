@@ -37,6 +37,7 @@ struct _VelocityWindow
 
   /* Template widgets */
   GtkLabel *server_label;
+  AdwSpinner *server_spinner;
   GtkDrawingArea *gauge;
   GtkLabel *speed_label;
   GtkLabel *unit_label;
@@ -424,6 +425,33 @@ selected_server_base (VelocityWindow *self)
 }
 
 static void
+update_ready_server_label (VelocityWindow *self)
+{
+  guint selected = adw_combo_row_get_selected (self->server_row);
+  const char *name;
+
+  if (selected != 0 && selected != GTK_INVALID_LIST_POSITION)
+    name = velocity_speedtest_get_server_name_at (self->test, selected - 1);
+  else
+    name = velocity_speedtest_get_best_server (self->test);
+
+  if (name == NULL && velocity_speedtest_is_preloading (self->test))
+    name = _ ("Loading servers...");
+
+  gtk_label_set_label (self->server_label, name != NULL ? name : "");
+}
+
+// the spinner only shows while the test is idle, so it never sits next to
+// the server of a running or finished test
+static void
+update_preload_spinner (VelocityWindow *self)
+{
+  gtk_widget_set_visible (GTK_WIDGET (self->server_spinner),
+                          velocity_speedtest_is_preloading (self->test) &&
+                              velocity_speedtest_get_phase (self->test) == VELOCITY_PHASE_IDLE);
+}
+
+static void
 on_server_selected (VelocityWindow *self)
 {
   const char *base;
@@ -434,6 +462,31 @@ on_server_selected (VelocityWindow *self)
   base = selected_server_base (self);
   velocity_speedtest_set_preferred_server (self->test, base);
   g_settings_set_string (self->settings, "server", base != NULL ? base : "");
+  update_ready_server_label (self);
+}
+
+static void
+on_best_server_changed (VelocitySpeedtest *test,
+                        VelocityWindow *self)
+{
+  g_autoptr (GVariant) state = velocity_speedtest_get_best_server_state (test);
+
+  // remember it for the next launch
+  if (state != NULL)
+    g_settings_set_value (self->settings, "best-server", state);
+
+  if (velocity_speedtest_get_phase (test) == VELOCITY_PHASE_IDLE)
+    update_ready_server_label (self);
+}
+
+static void
+on_preload_changed (VelocitySpeedtest *test,
+                    VelocityWindow *self)
+{
+  if (velocity_speedtest_get_phase (test) == VELOCITY_PHASE_IDLE)
+    update_ready_server_label (self);
+
+  update_preload_spinner (self);
 }
 
 static void
@@ -444,7 +497,7 @@ on_servers_changed (VelocitySpeedtest *test,
   g_autoptr (GtkStringList) model = gtk_string_list_new (NULL);
   guint selected = 0;
 
-  gtk_string_list_append (model, _ ("Automatic (lowest latency)"));
+  gtk_string_list_append (model, _ ("Automatic"));
 
   for (guint i = 0; i < velocity_speedtest_get_n_servers (test); i++)
     {
@@ -591,6 +644,7 @@ on_phase_changed (VelocitySpeedtest *test,
     gtk_label_set_label (self->phase_label, status);
 
   gtk_button_set_label (self->start_button, button);
+  update_preload_spinner (self);
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->server_row),
                             (VelocityPhase) phase == VELOCITY_PHASE_DONE ||
@@ -685,6 +739,7 @@ velocity_window_class_init (VelocityWindowClass *klass)
 
   gtk_widget_class_set_template_from_resource (widget_class, "/io/github/vani_tty1/velocity/velocity-window.ui");
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, server_label);
+  gtk_widget_class_bind_template_child (widget_class, VelocityWindow, server_spinner);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, gauge);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, speed_label);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, unit_label);
@@ -739,6 +794,15 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect (self->test, "progress", G_CALLBACK (on_progress), self);
   g_signal_connect (self->test, "failed", G_CALLBACK (on_failed), self);
   g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
+  g_signal_connect (self->test, "best-server-changed", G_CALLBACK (on_best_server_changed), self);
+  g_signal_connect (self->test, "preload-changed", G_CALLBACK (on_preload_changed), self);
+
+  {
+    g_autoptr (GVariant) cached = g_settings_get_value (self->settings, "best-server");
+
+    velocity_speedtest_set_best_server_state (self->test, cached);
+    update_ready_server_label (self);
+  }
+
   velocity_speedtest_load_servers (self->test);
 }
-

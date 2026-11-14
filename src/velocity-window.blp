@@ -4,9 +4,7 @@ using Adw 1;
 template $VelocityWindow: Adw.ApplicationWindow {
   title: _("Velocity");
   default-width: 400;
-  width-request: 360;
-  height-request: 294;
-  default-height: 725;
+  default-height: 730;
 
   content: Adw.ToolbarView {
     [top]
@@ -48,9 +46,20 @@ template $VelocityWindow: Adw.ApplicationWindow {
               margin-start: 24;
               margin-end: 24;
 
-              Label server_label {
-                label: _("");
-                ellipsize: end;
+              Box {
+                halign: center;
+                spacing: 8;
+
+                Adw.Spinner server_spinner {
+                  visible: false;
+                  width-request: 16;
+                  height-request: 16;
+                }
+
+                Label server_label {
+                  label: _("");
+                  ellipsize: end;
+                }
               }
 
               Overlay {
@@ -123,7 +132,7 @@ template $VelocityWindow: Adw.ApplicationWindow {
 
                   model: StringList {
                     strings [
-                      _("Automatic (lowest latency)"),
+                      _("Automatic"),
                     ]
                   };
 

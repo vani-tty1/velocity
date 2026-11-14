@@ -66,6 +66,8 @@ ping_done_cb (GObject *source,
 
   if (body == NULL)
     {
+      // don't keep handing out a cached server that no longer answers
+      velocity_speedtest_invalidate_best_server (self);
       velocity_speedtest_fail (self, error != NULL ? error->message : "Latency test failed.");
       g_object_unref (self);
       return;

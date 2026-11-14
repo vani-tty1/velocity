@@ -34,6 +34,8 @@ enum
   SIGNAL_FINISHED,
   SIGNAL_FAILED,
   SIGNAL_SERVERS_CHANGED,
+  SIGNAL_BEST_SERVER_CHANGED,
+  SIGNAL_PRELOAD_CHANGED,
   N_SIGNALS
 };
 
@@ -45,6 +47,10 @@ velocity_speedtest_set_phase (VelocitySpeedtest *self,
 {
   self->phase = phase;
   g_signal_emit (self, signals[SIGNAL_PHASE_CHANGED], 0, (int) phase);
+
+  // between tests is the time to make sure the next Start has a server ready
+  if (phase == VELOCITY_PHASE_IDLE || phase == VELOCITY_PHASE_DONE)
+    velocity_speedtest_preload_best_server (self);
 }
 
 void
@@ -68,6 +74,18 @@ velocity_speedtest_emit_servers_changed (VelocitySpeedtest *self)
 }
 
 void
+velocity_speedtest_emit_best_server_changed (VelocitySpeedtest *self)
+{
+  g_signal_emit (self, signals[SIGNAL_BEST_SERVER_CHANGED], 0);
+}
+
+void
+velocity_speedtest_emit_preload_changed (VelocitySpeedtest *self)
+{
+  g_signal_emit (self, signals[SIGNAL_PRELOAD_CHANGED], 0);
+}
+
+void
 velocity_speedtest_stop_tick (VelocitySpeedtest *self)
 {
   if (self->tick_id != 0)
@@ -81,6 +99,7 @@ void
 velocity_speedtest_cancel_everything (VelocitySpeedtest *self)
 {
   self->generation++;
+  self->waiting_for_preload = FALSE;
   velocity_speedtest_stop_tick (self);
 
   if (self->phase_cancellable != NULL)
@@ -135,10 +154,17 @@ void
 velocity_speedtest_set_preferred_server (VelocitySpeedtest *self,
                                          const char *base)
 {
+  gboolean was_set;
+
   g_return_if_fail (VELOCITY_IS_SPEEDTEST (self));
+
+  was_set = self->preferred_base != NULL;
 
   g_free (self->preferred_base);
   self->preferred_base = (base != NULL && *base != '\0') ? g_strdup (base) : NULL;
+
+  if (was_set && self->preferred_base == NULL)
+    velocity_speedtest_preload_best_server (self);
 }
 
 void
@@ -193,6 +219,21 @@ velocity_speedtest_finalize (GObject *object)
 
   velocity_speedtest_cancel_everything (self);
 
+  // no signals here: the object is already going away
+  self->preload_generation++;
+  if (self->preload_cancellable != NULL)
+    {
+      g_cancellable_cancel (self->preload_cancellable);
+      g_clear_object (&self->preload_cancellable);
+    }
+  g_clear_pointer (&self->best_cached, velocity_speedtest_candidate_free);
+
+  if (self->preload_timeout_id != 0)
+    {
+      g_source_remove (self->preload_timeout_id);
+      self->preload_timeout_id = 0;
+    }
+
   g_clear_object (&self->session);
   g_clear_pointer (&self->candidates, g_ptr_array_unref);
   g_clear_pointer (&self->servers, g_ptr_array_unref);
@@ -230,6 +271,12 @@ velocity_speedtest_class_init (VelocitySpeedtestClass *klass)
   signals[SIGNAL_SERVERS_CHANGED] =
       g_signal_new ("servers-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
                     0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+  signals[SIGNAL_BEST_SERVER_CHANGED] =
+      g_signal_new ("best-server-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+                    0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+  signals[SIGNAL_PRELOAD_CHANGED] =
+      g_signal_new ("preload-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+                    0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -243,6 +290,8 @@ velocity_speedtest_init (VelocitySpeedtest *self)
   self->candidates = g_ptr_array_new ();
   self->rtts = g_array_new (FALSE, FALSE, sizeof (double));
   self->phase = VELOCITY_PHASE_IDLE;
+
+  velocity_speedtest_watch_network (self);
 }
 
 VelocitySpeedtest *
