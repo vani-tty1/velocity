@@ -55,6 +55,18 @@
 
   <releases>
 
+    <release version="0.4.1" date="2026-11-15">
+      <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
+      <description translate="no">
+        <p>This is a stable release with following changes: </p>
+        <ul>
+          <li>Preload server to use on startup</li>
+          <li>Reduce maximum candidate for best server to use.</li>
+          <li>Speed server probing</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="0.4.0" date="2026-11-11">
       <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
       <description translate="no">
