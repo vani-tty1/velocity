@@ -183,13 +183,16 @@ test_is_idle (VelocitySpeedtest *self)
          self->phase == VELOCITY_PHASE_FAILED;
 }
 
-// Probing only makes sense in automatic mode, between tests, with servers known
+// Probing only makes sense in automatic mode, between tests, with servers known,
+// and never on a metered connection, Start probes lazily there instead
 static gboolean
 preload_wanted (VelocitySpeedtest *self)
 {
   const char *override = g_getenv ("VELOCITY_SERVER_URL");
 
-  return test_is_idle (self) &&
+  return self->preload_enabled &&
+         !g_network_monitor_get_network_metered (g_network_monitor_get_default ()) &&
+         test_is_idle (self) &&
          (override == NULL || *override == '\0') &&
          find_by_base (self, self->preferred_base) == NULL &&
          self->candidates->len > 0;
@@ -227,6 +230,15 @@ void
 velocity_speedtest_invalidate_best_server (VelocitySpeedtest *self)
 {
   g_clear_pointer (&self->best_cached, velocity_speedtest_candidate_free);
+}
+
+// a pending refresh timer is left alone, it does nothing while probing is unwanted
+static void
+preload_pause (VelocitySpeedtest *self)
+{
+  // a running test may be waiting on the probe
+  if (test_is_idle (self))
+    velocity_speedtest_cancel_preload (self);
 }
 
 static gboolean
@@ -368,6 +380,34 @@ velocity_speedtest_preload_best_server (VelocitySpeedtest *self)
     start_preload (self);
 }
 
+void
+velocity_speedtest_set_preload_enabled (VelocitySpeedtest *self,
+                                        gboolean enabled)
+{
+  g_return_if_fail (VELOCITY_IS_SPEEDTEST (self));
+
+  if (self->preload_enabled == enabled)
+    return;
+
+  self->preload_enabled = enabled;
+
+  if (enabled)
+    velocity_speedtest_preload_best_server (self);
+  else
+    preload_pause (self);
+}
+
+static void
+on_metered_changed (GNetworkMonitor *monitor,
+                    GParamSpec *pspec,
+                    VelocitySpeedtest *self)
+{
+  if (g_network_monitor_get_network_metered (monitor))
+    preload_pause (self);
+  else
+    velocity_speedtest_preload_best_server (self);
+}
+
 static void
 on_network_changed (GNetworkMonitor *monitor,
                     gboolean available,
@@ -390,6 +430,8 @@ velocity_speedtest_watch_network (VelocitySpeedtest *self)
 {
   g_signal_connect_object (g_network_monitor_get_default (), "network-changed",
                            G_CALLBACK (on_network_changed), self, 0);
+  g_signal_connect_object (g_network_monitor_get_default (), "notify::network-metered",
+                           G_CALLBACK (on_metered_changed), self, 0);
 }
 
 const char *

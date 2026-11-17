@@ -851,6 +851,16 @@ on_start_clicked (VelocityWindow *self)
     }
 }
 
+// no background probing while the window is hidden
+static void
+on_suspended_changed (GObject *object,
+                      GParamSpec *pspec,
+                      VelocityWindow *self)
+{
+  velocity_speedtest_set_preload_enabled (self->test,
+                                          !gtk_window_is_suspended (GTK_WINDOW (self)));
+}
+
 static void
 velocity_window_dispose (GObject *object)
 {
@@ -940,6 +950,7 @@ velocity_window_init (VelocityWindow *self)
   g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
   g_signal_connect (self->test, "best-server-changed", G_CALLBACK (on_best_server_changed), self);
   g_signal_connect (self->test, "preload-changed", G_CALLBACK (on_preload_changed), self);
+  g_signal_connect_object (self, "notify::suspended", G_CALLBACK (on_suspended_changed), self, 0);
 
   {
     g_autoptr (GVariant) cached = g_settings_get_value (self->settings, "best-server");

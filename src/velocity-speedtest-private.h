@@ -80,6 +80,7 @@ struct _VelocitySpeedtest
   gint64 best_cached_at;
   guint preload_timeout_id;
   gboolean waiting_for_preload;
+  gboolean preload_enabled;
 
   GArray *rtts;
   int ping_sent;

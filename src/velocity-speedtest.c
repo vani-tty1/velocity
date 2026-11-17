@@ -290,6 +290,7 @@ velocity_speedtest_init (VelocitySpeedtest *self)
   self->candidates = g_ptr_array_new ();
   self->rtts = g_array_new (FALSE, FALSE, sizeof (double));
   self->phase = VELOCITY_PHASE_IDLE;
+  self->preload_enabled = TRUE;
 
   velocity_speedtest_watch_network (self);
 }

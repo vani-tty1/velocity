@@ -62,6 +62,10 @@ const char *velocity_speedtest_get_server_base_at (VelocitySpeedtest *self, guin
 const char *velocity_speedtest_get_best_server (VelocitySpeedtest *self);
 gboolean velocity_speedtest_is_preloading (VelocitySpeedtest *self);
 
+// Turn background probing on or off, e.g. while the window is hidden.
+// A test that is already running is never touched.
+void velocity_speedtest_set_preload_enabled (VelocitySpeedtest *self, gboolean enabled);
+
 // Save and restore the cached best server, as a "(sissssx)" variant, so it
 // survives restarts. Restoring ignores anything expired or malformed.
 GVariant *velocity_speedtest_get_best_server_state (VelocitySpeedtest *self);
