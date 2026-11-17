@@ -22,6 +22,30 @@
 #include <adwaita.h>
 #include <glib/gi18n.h>
 
+// Mbit/s values, in the same order as the rows in preferences-dialog.blp
+static const int gauge_presets[] = { 100, 500, 1000, 2500, 10000 };
+
+static guint
+gauge_preset_index (int mbps)
+{
+  for (guint i = 0; i < G_N_ELEMENTS (gauge_presets); i++)
+    {
+      if (gauge_presets[i] == mbps)
+        return i;
+    }
+
+  return 2;
+}
+
+static void
+on_gauge_selected (AdwComboRow *row, GParamSpec *pspec, GSettings *settings)
+{
+  guint selected = adw_combo_row_get_selected (row);
+
+  if (selected < G_N_ELEMENTS (gauge_presets))
+    g_settings_set_int (settings, "gauge-max", gauge_presets[selected]);
+}
+
 static void
 update_reset_sensitivity (GSettings *settings, const char *key, GtkWidget *button)
 {
@@ -42,6 +66,7 @@ velocity_show_preferences_dialog (GtkWindow *parent)
   GtkBuilder *builder;
   AdwDialog *dialog;
   GtkWidget *accent_reset_button;
+  GtkWidget *gauge_row;
   GSimpleActionGroup *actions;
   GSettings *settings;
 
@@ -61,10 +86,14 @@ velocity_show_preferences_dialog (GtkWindow *parent)
   g_signal_connect (accent_reset_button, "clicked", G_CALLBACK (on_reset_clicked), settings);
   update_reset_sensitivity (settings, "accent-color", accent_reset_button);
 
+  gauge_row = GTK_WIDGET (gtk_builder_get_object (builder, "gauge_row"));
+  adw_combo_row_set_selected (ADW_COMBO_ROW (gauge_row),
+                              gauge_preset_index (g_settings_get_int (settings, "gauge-max")));
+  g_signal_connect (gauge_row, "notify::selected", G_CALLBACK (on_gauge_selected), settings);
+
   g_object_set_data_full (G_OBJECT (dialog), "velocity-preferences-settings",
                           settings, g_object_unref);
 
   adw_dialog_present (dialog, GTK_WIDGET (parent));
   g_object_unref (builder);
 }
-

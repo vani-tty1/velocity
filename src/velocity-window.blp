@@ -350,15 +350,29 @@ template $VelocityWindow: Adw.ApplicationWindow {
                     ]
                   }
 
-                  Button {
-                    label: _("Export");
+                  Box {
                     halign: center;
-                    clicked => $on_export_clicked() swapped;
+                    spacing: 12;
 
-                    styles [
-                      "pill",
-                      "suggested-action",
-                    ]
+                    Button {
+                      label: _("Clear");
+                      clicked => $on_clear_clicked() swapped;
+
+                      styles [
+                        "pill",
+                        "destructive-action",
+                      ]
+                    }
+
+                    Button {
+                      label: _("Export");
+                      clicked => $on_export_clicked() swapped;
+
+                      styles [
+                        "pill",
+                        "suggested-action",
+                      ]
+                    }
                   }
                 };
               };

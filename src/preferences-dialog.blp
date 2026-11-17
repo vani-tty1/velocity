@@ -11,6 +11,25 @@ Adw.PreferencesDialog preferences_dialog {
     icon-name: "preferences-system-symbolic";
 
     Adw.PreferencesGroup {
+      title: _("Gauge");
+
+      Adw.ComboRow gauge_row {
+        title: _("Gauge Scale");
+        subtitle: _("Scale of the speed gauge. Pick one close to your plan.");
+
+        model: StringList {
+          strings [
+            _("100 Mbit/s"),
+            _("500 Mbit/s"),
+            _("1 Gbit/s"),
+            _("2.5 Gbit/s"),
+            _("10 Gbit/s"),
+          ]
+        };
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Appearance");
       description: _("Accent color for Velocity only. Reset to follow the system.");
 
