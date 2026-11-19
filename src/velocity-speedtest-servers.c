@@ -26,15 +26,8 @@
 #ifndef LIBRESPEED_LIST_URL
 #define LIBRESPEED_LIST_URL "https://librespeed.org/backend-servers/servers.php"
 #endif
-#ifndef OOKLA_LIST_URL
-#define OOKLA_LIST_URL "https://www.speedtest.net/api/js/servers?engine=js&limit=100"
-#endif
-#ifndef OOKLA_SCHEME
-#define OOKLA_SCHEME "https"
-#endif
 
 #define MAX_LIBRESPEED_CANDIDATES 10
-#define MAX_OOKLA_CANDIDATES 10
 
 // how long a background-probed best server is trusted, and how many probes
 // run at once (more than the session's connection limit would only queue,
@@ -75,12 +68,6 @@ normalize_base (const char *server)
   return g_strconcat (tmp, "/", NULL);
 }
 
-static const char *
-backend_label (VelocityBackend backend)
-{
-  return backend == VELOCITY_BACKEND_OOKLA ? "Ookla" : "LibreSpeed";
-}
-
 static Candidate *
 candidate_new (VelocityBackend backend,
                const char *name,
@@ -90,22 +77,13 @@ candidate_new (VelocityBackend backend,
   Candidate *c = g_new0 (Candidate, 1);
 
   c->backend = backend;
-  c->name = g_strdup_printf ("%s · %s", name, backend_label (backend));
+  c->name = g_strdup_printf ("%s · LibreSpeed", name);
   c->base = base;
   c->rank = rank;
 
-  if (backend == VELOCITY_BACKEND_OOKLA)
-    {
-      c->dl_path = g_strdup ("random4000x4000.jpg");
-      c->ul_path = g_strdup ("upload.php");
-      c->ping_path = g_strdup ("latency.txt");
-    }
-  else
-    {
-      c->dl_path = g_strdup ("garbage.php");
-      c->ul_path = g_strdup ("empty.php");
-      c->ping_path = g_strdup ("empty.php");
-    }
+  c->dl_path = g_strdup ("garbage.php");
+  c->ul_path = g_strdup ("empty.php");
+  c->ping_path = g_strdup ("empty.php");
 
   return c;
 }
@@ -618,10 +596,8 @@ rebuild_candidates (VelocitySpeedtest *self)
   for (guint i = 0; i < self->servers->len; i++)
     {
       Candidate *c = g_ptr_array_index (self->servers, i);
-      guint max = c->backend == VELOCITY_BACKEND_OOKLA ? MAX_OOKLA_CANDIDATES
-                                                       : MAX_LIBRESPEED_CANDIDATES;
 
-      if (c->rank < max)
+      if (c->rank < MAX_LIBRESPEED_CANDIDATES)
         g_ptr_array_add (self->candidates, c);
     }
 }
@@ -639,28 +615,6 @@ load_json_array (GBytes *bytes,
     return NULL;
 
   return json_node_get_array (json_parser_get_root (parser));
-}
-
-// Ookla hands out "host:port"; only accept what can safely go into a URL
-static gboolean
-valid_ookla_host (const char *host)
-{
-  gsize len;
-
-  if (host == NULL || *host == '\0')
-    return FALSE;
-
-  len = strlen (host);
-  if (len > 253 || host[0] == '.' || host[0] == '-' || strstr (host, "..") != NULL)
-    return FALSE;
-
-  for (gsize i = 0; i < len; i++)
-    {
-      if (!g_ascii_isalnum (host[i]) && host[i] != '.' && host[i] != '-' && host[i] != ':')
-        return FALSE;
-    }
-
-  return TRUE;
 }
 
 static const char *
@@ -706,57 +660,11 @@ parse_librespeed_list (VelocitySpeedtest *self,
 }
 
 static const char *
-parse_ookla_list (VelocitySpeedtest *self,
-                  GBytes *bytes)
-{
-  g_autoptr (JsonParser) parser = json_parser_new ();
-  JsonArray *arr = load_json_array (bytes, parser);
-  guint added = 0;
-
-  if (arr == NULL)
-    return "The Ookla server list could not be read.";
-
-  for (guint i = 0; i < json_array_get_length (arr); i++)
-    {
-      JsonObject *o = json_array_get_object_element (arr, i);
-      const char *host, *city, *sponsor;
-      g_autofree char *base = NULL;
-      g_autofree char *name = NULL;
-
-      if (o == NULL)
-        continue;
-
-      host = json_object_get_string_member_with_default (o, "host", NULL);
-      if (!valid_ookla_host (host))
-        continue;
-
-      base = g_strdup_printf ("%s://%s/speedtest/", OOKLA_SCHEME, host);
-      if (find_by_base (self, base) != NULL)
-        continue;
-
-      city = json_object_get_string_member_with_default (o, "name", host);
-      sponsor = json_object_get_string_member_with_default (o, "sponsor", "");
-      name = *sponsor != '\0' ? g_strdup_printf ("%s (%s)", city, sponsor) : g_strdup (city);
-
-      g_ptr_array_add (self->servers,
-                       candidate_new (VELOCITY_BACKEND_OOKLA, name,
-                                      g_steal_pointer (&base), added++));
-    }
-
-  if (added == 0)
-    return "The Ookla server list was empty.";
-
-  return NULL;
-}
-
-static const char *
 parse_server_list (VelocitySpeedtest *self,
                    VelocityBackend backend,
                    GBytes *bytes)
 {
-  const char *failure = backend == VELOCITY_BACKEND_OOKLA
-                            ? parse_ookla_list (self, bytes)
-                            : parse_librespeed_list (self, bytes);
+  const char *failure = parse_librespeed_list (self, bytes);
 
   if (failure != NULL)
     return failure;
@@ -852,9 +760,7 @@ fetch_list (VelocitySpeedtest *self,
   g_autoptr (SoupMessage) msg = NULL;
   ListCtx *l = g_new0 (ListCtx, 1);
 
-  msg = soup_message_new (SOUP_METHOD_GET, backend == VELOCITY_BACKEND_OOKLA
-                                               ? OOKLA_LIST_URL
-                                               : LIBRESPEED_LIST_URL);
+  msg = soup_message_new (SOUP_METHOD_GET, LIBRESPEED_LIST_URL);
   l->self = g_object_ref (self);
   l->backend = backend;
   l->for_run = for_run;
@@ -917,14 +823,11 @@ velocity_speedtest_select_server (VelocitySpeedtest *self)
   const char *override;
   gboolean all_loaded = TRUE;
 
-  // VELOCITY_SERVER_URL=http://host:port/path/ [VELOCITY_SERVER_TYPE=librespeed|ookla]
+  // VELOCITY_SERVER_URL=http://host:port/path/
   override = g_getenv ("VELOCITY_SERVER_URL");
   if (override != NULL && *override != '\0')
     {
-      const char *type = g_getenv ("VELOCITY_SERVER_TYPE");
-      VelocityBackend backend = g_strcmp0 (type, "ookla") == 0 ? VELOCITY_BACKEND_OOKLA
-                                                               : VELOCITY_BACKEND_LIBRESPEED;
-      Candidate *c = candidate_new (backend, override,
+      Candidate *c = candidate_new (VELOCITY_BACKEND_LIBRESPEED, override,
                                     g_str_has_suffix (override, "/") ? g_strdup (override)
                                                                      : g_strconcat (override, "/", NULL),
                                     0);

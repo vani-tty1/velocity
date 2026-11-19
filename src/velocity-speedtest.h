@@ -43,7 +43,6 @@ typedef enum
 typedef enum
 {
   VELOCITY_BACKEND_LIBRESPEED,
-  VELOCITY_BACKEND_OOKLA,
   VELOCITY_N_BACKENDS,
 } VelocityBackend;
 
