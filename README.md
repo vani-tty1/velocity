@@ -8,11 +8,7 @@
 
 # velocity
 
-A speedtest app using [librespeed](https://librespeed.org/) and
-[Ookla](https://www.speedtest.net/) (speedtest.net) servers.
-
->Ookla support is unofficial: it uses the same public server directory and
-HTTP endpoints as `speedtest-cli`.
+A speedtest app using [librespeed](https://librespeed.org/) servers.
 
 ## Install
 
@@ -25,10 +21,9 @@ workflow run in the [Github Actions](https://github.com/vani-tty1/velocity/actio
 
 You can use the bash script [`start.sh`](start.sh) for automatically building and launching it.
 
-For development you can point Velocity at one of the mock servers with
-`VELOCITY_SERVER_URL` and `VELOCITY_SERVER_TYPE` (`librespeed`(the default) or
-`ookla`) if the network is not available or is metered. `build-aux/mock-librespeed.py` and `
-build-aux/mock-ookla.py` are local stand-ins.
+For development you can point Velocity at the mock server with
+`VELOCITY_SERVER_URL` if the network is not available or is metered.
+`build-aux/mock-librespeed.py` is a local stand-in.
 
 
 ## License

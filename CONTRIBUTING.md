@@ -2,9 +2,8 @@
 
 We would love for you to contribute to Velocity!
 
-Velocity is a speed testing tool that can run tests against both
-[Ookla](https://www.speedtest.net/) and [LibreSpeed](https://librespeed.org/)
-servers.
+Velocity is a speed testing tool that runs tests against
+[LibreSpeed](https://librespeed.org/) servers.
 
 ## Filing a bug
 
@@ -18,7 +17,7 @@ A good bug report includes:
  * What you expected to happen and what happened instead
  * Steps to reproduce the problem
  * Your distribution and version
- * Which server type you were testing against (Ookla or LibreSpeed)
+ * Which LibreSpeed server you were testing against
  * Any relevant output or error messages
 
 __Please do not file issues for feature requests.__
@@ -52,8 +51,8 @@ things working for yours, as we cannot test every possible configuration.
 Before opening a Pull Request, please make sure the project builds and that
 nothing was broken by your changes.
 
-If your change touches server selection or the test flow, please try it with
-**both** Ookla and LibreSpeed servers, since they behave differently.
+If your change touches server selection or the test flow, please try it against
+real LibreSpeed servers as well as the mock server.
 
 ## Licensing
 
@@ -69,10 +68,9 @@ explaining the why.
 Common types are `feat`, `fix`, `build`, `docs`, `refactor` and `chore`.
 
 ```
-build: specify which server type to use in testing
+build: use the mock server in start.sh
 
-alternatively, for testing purposes, you set it to use Ookla servers
-too not just librespeed servers
+lets you test without a network connection
 ```
 
 Please keep each commit focused. Check what is staged with `git status` and
