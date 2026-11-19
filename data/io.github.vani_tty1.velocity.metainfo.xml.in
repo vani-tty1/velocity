@@ -7,7 +7,7 @@
   <name>Velocity</name>
   <summary>Test your internet speed</summary>
   <description>
-    <p>A simple app to test internet connection speed using LibreSpeed and Speedtest.net servers.</p>
+    <p>A simple app to test internet connection speed using LibreSpeed servers.</p>
   </description>
 
   <developer id="io.github.vani_tty1">
