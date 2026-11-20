@@ -303,6 +303,14 @@ on_history_row_activated (VelocityWindow *self,
       details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Jitter"), j);
     }
 
+  // older history entries were saved without data used
+  if (json_object_has_member (entry, "bytes"))
+    {
+      g_autofree char *b = g_format_size (json_object_get_int_member (entry, "bytes"));
+
+      details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Data used"), b);
+    }
+
   page = adw_preferences_page_new ();
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page), ADW_PREFERENCES_GROUP (group));
 
@@ -407,6 +415,7 @@ history_save (VelocityWindow *self)
   json_object_set_double_member (entry, "upload", velocity_speedtest_get_upload (self->test));
   json_object_set_double_member (entry, "ping", velocity_speedtest_get_ping (self->test));
   json_object_set_double_member (entry, "jitter", velocity_speedtest_get_jitter (self->test));
+  json_object_set_int_member (entry, "bytes", velocity_speedtest_get_data_used (self->test));
   json_array_add_object_element (self->history, entry);
 
   gtk_list_box_prepend (self->history_list, history_row_new (entry));

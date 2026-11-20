@@ -144,6 +144,7 @@ velocity_speedtest_start (VelocitySpeedtest *self)
   velocity_speedtest_cancel_everything (self);
 
   self->ping = self->jitter = self->download = self->upload = 0.0;
+  self->dl_bytes = self->ul_bytes = 0;
   g_clear_pointer (&self->server_name, g_free);
   self->run_cancellable = g_cancellable_new ();
 
@@ -299,4 +300,18 @@ VelocitySpeedtest *
 velocity_speedtest_new (void)
 {
   return g_object_new (VELOCITY_TYPE_SPEEDTEST, NULL);
+}
+
+gint64
+velocity_speedtest_get_data_used (VelocitySpeedtest *self)
+{
+  g_return_val_if_fail (VELOCITY_IS_SPEEDTEST (self), 0);
+
+  if (self->phase == VELOCITY_PHASE_DOWNLOAD)
+    return self->bytes;
+
+  if (self->phase == VELOCITY_PHASE_UPLOAD)
+    return self->dl_bytes + self->bytes;
+
+  return self->dl_bytes + self->ul_bytes;
 }

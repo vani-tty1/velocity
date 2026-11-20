@@ -86,6 +86,8 @@ struct _VelocitySpeedtest
   int ping_sent;
 
   gint64 bytes;
+  gint64 dl_bytes;
+  gint64 ul_bytes;
   gint64 t_start;
   gint64 t_last;
   gint64 bytes_last;

@@ -243,11 +243,13 @@ finish_transfer (VelocitySpeedtest *self)
 
   if (phase == VELOCITY_PHASE_DOWNLOAD)
     {
+      self->dl_bytes = self->bytes;
       self->download = mbps;
       velocity_speedtest_start_transfer (self, VELOCITY_PHASE_UPLOAD);
     }
   else
     {
+      self->ul_bytes = self->bytes;
       self->upload = mbps;
       velocity_speedtest_set_phase (self, VELOCITY_PHASE_DONE);
       velocity_speedtest_emit_finished (self);
@@ -298,9 +300,10 @@ velocity_speedtest_start_transfer (VelocitySpeedtest *self,
 {
   int n = phase == VELOCITY_PHASE_DOWNLOAD ? DL_STREAMS : UL_STREAMS;
 
+  // reset first, so data_used never double counts during the phase change
+  self->bytes = 0;
   velocity_speedtest_set_phase (self, phase);
 
-  self->bytes = 0;
   self->bytes_last = 0;
   self->bytes_warm = 0;
   self->warm_set = FALSE;

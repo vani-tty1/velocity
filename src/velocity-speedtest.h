@@ -77,5 +77,8 @@ double velocity_speedtest_get_jitter (VelocitySpeedtest *self);
 double velocity_speedtest_get_download (VelocitySpeedtest *self);
 double velocity_speedtest_get_upload (VelocitySpeedtest *self);
 
+// Payload bytes moved so far by the transfer phases (no HTTP/TLS overhead).
+gint64 velocity_speedtest_get_data_used (VelocitySpeedtest *self);
+
 G_END_DECLS
 
