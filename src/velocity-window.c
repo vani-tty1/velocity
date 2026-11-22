@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "velocity-accent.h"
+#include "velocity-server-picker.h"
 #include "velocity-speedtest.h"
 #include "velocity-window.h"
 #define GAUGE_DEFAULT_MAX_MBPS 1000.0
@@ -49,11 +50,12 @@ struct _VelocityWindow
   GtkLabel *jitter_value;
   GtkStack *history_stack;
   GtkListBox *history_list;
-  AdwComboRow *server_row;
+  AdwActionRow *server_row;
 
   JsonArray *history;
   GSettings *settings;
-  gboolean populating;
+  GtkStringList *server_names;
+  guint server_selected;
   VelocitySpeedtest *test;
 
   double gauge_fraction;
@@ -564,22 +566,19 @@ on_export_clicked (VelocityWindow *self)
 static const char *
 selected_server_base (VelocityWindow *self)
 {
-  guint selected = adw_combo_row_get_selected (self->server_row);
-
-  if (selected == 0 || selected == GTK_INVALID_LIST_POSITION)
+  if (self->server_selected == 0)
     return NULL;
 
-  return velocity_speedtest_get_server_base_at (self->test, selected - 1);
+  return velocity_speedtest_get_server_base_at (self->test, self->server_selected - 1);
 }
 
 static void
 update_ready_server_label (VelocityWindow *self)
 {
-  guint selected = adw_combo_row_get_selected (self->server_row);
   const char *name;
 
-  if (selected != 0 && selected != GTK_INVALID_LIST_POSITION)
-    name = velocity_speedtest_get_server_name_at (self->test, selected - 1);
+  if (self->server_selected != 0)
+    name = velocity_speedtest_get_server_name_at (self->test, self->server_selected - 1);
   else
     name = velocity_speedtest_get_best_server (self->test);
 
@@ -600,17 +599,34 @@ update_preload_spinner (VelocityWindow *self)
 }
 
 static void
-on_server_selected (VelocityWindow *self)
+update_server_row (VelocityWindow *self)
 {
+  const char *name = gtk_string_list_get_string (self->server_names, self->server_selected);
+
+  adw_action_row_set_subtitle (self->server_row, name != NULL ? name : "");
+}
+
+static void
+on_server_picked (guint index,
+                  gpointer user_data)
+{
+  VelocityWindow *self = VELOCITY_WINDOW (user_data);
   const char *base;
 
-  if (self->populating)
-    return;
+  self->server_selected = index;
+  update_server_row (self);
 
   base = selected_server_base (self);
   velocity_speedtest_set_preferred_server (self->test, base);
   g_settings_set_string (self->settings, "server", base != NULL ? base : "");
   update_ready_server_label (self);
+}
+
+static void
+on_server_row_activated (VelocityWindow *self)
+{
+  velocity_show_server_dialog (GTK_WINDOW (self), G_LIST_MODEL (self->server_names),
+                               self->server_selected, on_server_picked, self);
 }
 
 static void
@@ -655,10 +671,10 @@ on_servers_changed (VelocitySpeedtest *test,
         selected = i + 1;
     }
 
-  self->populating = TRUE;
-  adw_combo_row_set_model (self->server_row, G_LIST_MODEL (model));
-  adw_combo_row_set_selected (self->server_row, selected);
-  self->populating = FALSE;
+  g_clear_object (&self->server_names);
+  self->server_names = g_steal_pointer (&model);
+  self->server_selected = selected;
+  update_server_row (self);
 
   velocity_speedtest_set_preferred_server (test, selected_server_base (self));
 }
@@ -882,6 +898,7 @@ velocity_window_dispose (GObject *object)
   g_clear_object (&self->gauge_animation);
   g_clear_pointer (&self->history, json_array_unref);
   g_clear_object (&self->settings);
+  g_clear_object (&self->server_names);
 
   G_OBJECT_CLASS (velocity_window_parent_class)->dispose (object);
 }
@@ -910,7 +927,7 @@ velocity_window_class_init (VelocityWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, history_list);
   gtk_widget_class_bind_template_child (widget_class, VelocityWindow, server_row);
   gtk_widget_class_bind_template_callback (widget_class, on_start_clicked);
-  gtk_widget_class_bind_template_callback (widget_class, on_server_selected);
+  gtk_widget_class_bind_template_callback (widget_class, on_server_row_activated);
   gtk_widget_class_bind_template_callback (widget_class, on_export_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_clear_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_history_row_activated);
@@ -921,9 +938,10 @@ velocity_window_init (VelocityWindow *self)
 {
   PangoAttrList *big = pango_attr_list_new ();
 
-  self->populating = TRUE;
+  self->server_names = gtk_string_list_new (NULL);
+  gtk_string_list_append (self->server_names, _ ("Automatic"));
+
   gtk_widget_init_template (GTK_WIDGET (self));
-  self->populating = FALSE;
 
   self->settings = g_settings_new ("io.github.vani_tty1.velocity");
   update_gauge_max (self);

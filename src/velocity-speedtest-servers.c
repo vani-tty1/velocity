@@ -32,7 +32,7 @@
 // how long a background-probed best server is trusted, and how many probes
 // run at once (more than the session's connection limit would only queue,
 // and queueing time would count as latency)
-#define BEST_SERVER_TTL_SECONDS (30)
+#define BEST_SERVER_TTL_SECONDS (30 * 60)
 #define NETWORK_SETTLE_SECONDS 2
 #define PRELOAD_CONCURRENCY 8
 

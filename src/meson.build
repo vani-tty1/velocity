@@ -13,6 +13,7 @@ velocity_sources = [
   'velocity-accent.c',
   'velocity-application.c',
   'velocity-preferences-dialog.c',
+  'velocity-server-picker.c',
   'velocity-window.c',
   'velocity-speedtest.c',
   'velocity-speedtest-ping.c',
