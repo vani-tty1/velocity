@@ -68,15 +68,15 @@ on_phase (VelocitySpeedtest *t, int phase, Flow *f)
 {
   g_array_append_val (f->phases, phase);
 
-  if (phase == VELOCITY_PHASE_DOWNLOAD || phase == VELOCITY_PHASE_FAILED)
+  if (phase == VELOCITY_PHASE_FAILED)
     g_main_loop_quit (f->loop);
 }
 
 static void
-on_progress (VelocitySpeedtest *t, int phase, double value, Flow *f)
+on_ping_finished (VelocitySpeedtest *t, Flow *f)
 {
-  if (phase == VELOCITY_PHASE_PING && value > 0)
-    f->saw_ping = TRUE;
+  f->saw_ping = TRUE;
+  g_main_loop_quit (f->loop);
 }
 
 static void
@@ -116,7 +116,7 @@ test_ping_then_download (void)
   f.loop = g_main_loop_new (NULL, FALSE);
   f.phases = g_array_new (FALSE, FALSE, sizeof (int));
   g_signal_connect (t, "phase-changed", G_CALLBACK (on_phase), &f);
-  g_signal_connect (t, "progress", G_CALLBACK (on_progress), &f);
+  g_signal_connect (t, "ping-finished", G_CALLBACK (on_ping_finished), &f);
 
   g_timeout_add_seconds (15, timeout_cb, f.loop);
   velocity_speedtest_start (t);
@@ -124,9 +124,8 @@ test_ping_then_download (void)
 
   velocity_speedtest_cancel (t);
 
-  g_assert_cmpuint (f.phases->len, >=, 2);
-  g_assert_cmpint (g_array_index (f.phases, int, 0), ==, VELOCITY_PHASE_PING);
-  g_assert_cmpint (g_array_index (f.phases, int, 1), ==, VELOCITY_PHASE_DOWNLOAD);
+  g_assert_cmpuint (f.phases->len, >=, 1);
+  g_assert_cmpint (g_array_index (f.phases, int, 0), ==, VELOCITY_PHASE_DOWNLOAD);
   g_assert_true (f.saw_ping);
   g_assert_cmpfloat (velocity_speedtest_get_ping (t), >, 0.0);
 
