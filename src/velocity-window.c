@@ -670,15 +670,6 @@ set_live_value (VelocityWindow *self,
 {
   g_autofree char *text = NULL;
 
-  if (phase == VELOCITY_PHASE_PING)
-    {
-      text = format_ms (value, FALSE);
-      gtk_label_set_label (self->speed_label, text);
-      gtk_label_set_label (self->unit_label, _ ("ms"));
-      gauge_set_target (self, 0.0);
-      return;
-    }
-
   if (value >= 1000.0)
     text = g_strdup_printf ("%.2f", value / 1000.0);
   else if (value >= 100.0)
@@ -741,17 +732,12 @@ on_phase_changed (VelocitySpeedtest *test,
       break;
     case VELOCITY_PHASE_DOWNLOAD:
       status = _ ("Testing download speed…");
+      if (velocity_speedtest_get_server (test) != NULL)
+        gtk_label_set_label (self->server_label,
+                             velocity_speedtest_get_server (test));
       gtk_label_set_label (self->speed_label, "0");
       gtk_label_set_label (self->unit_label, _ ("Mbit/s"));
       gauge_set_target (self, 0.0);
-      {
-        g_autofree char *p = format_ms (velocity_speedtest_get_ping (test), TRUE);
-        g_autofree char *j = g_strdup_printf (_ ("%.1f ms"),
-                                              velocity_speedtest_get_jitter (test));
-
-        gtk_label_set_label (self->ping_value, p);
-        gtk_label_set_label (self->jitter_value, j);
-      }
       break;
     case VELOCITY_PHASE_UPLOAD:
       status = _ ("Testing upload speed…");
@@ -821,6 +807,18 @@ on_progress (VelocitySpeedtest *test,
              VelocityWindow *self)
 {
   set_live_value (self, (VelocityPhase) phase, value);
+}
+
+static void
+on_ping_finished (VelocitySpeedtest *test,
+                  VelocityWindow *self)
+{
+  g_autofree char *p = format_ms (velocity_speedtest_get_ping (test), TRUE);
+  g_autofree char *j = g_strdup_printf (_ ("%.1f ms"),
+                                        velocity_speedtest_get_jitter (test));
+
+  gtk_label_set_label (self->ping_value, p);
+  gtk_label_set_label (self->jitter_value, j);
 }
 
 static void
@@ -955,6 +953,7 @@ velocity_window_init (VelocityWindow *self)
   self->test = velocity_speedtest_new ();
   g_signal_connect (self->test, "phase-changed", G_CALLBACK (on_phase_changed), self);
   g_signal_connect (self->test, "progress", G_CALLBACK (on_progress), self);
+  g_signal_connect (self->test, "ping-finished", G_CALLBACK (on_ping_finished), self);
   g_signal_connect (self->test, "failed", G_CALLBACK (on_failed), self);
   g_signal_connect (self->test, "servers-changed", G_CALLBACK (on_servers_changed), self);
   g_signal_connect (self->test, "best-server-changed", G_CALLBACK (on_best_server_changed), self);

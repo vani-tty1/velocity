@@ -44,6 +44,26 @@ typedef struct
 static void ping_next (VelocitySpeedtest *self);
 
 static void
+ping_finish (VelocitySpeedtest *self)
+{
+  double jitter = 0.0;
+
+  // jitter is computed in arrival order, before the sort for the median
+  for (guint i = 1; i < self->rtts->len; i++)
+    jitter += fabs (g_array_index (self->rtts, double, i) -
+                    g_array_index (self->rtts, double, i - 1));
+  self->jitter = self->rtts->len > 1 ? jitter / (self->rtts->len - 1) : 0.0;
+
+  if (self->rtts->len > 0)
+    {
+      g_array_sort (self->rtts, compare_double);
+      self->ping = g_array_index (self->rtts, double, self->rtts->len / 2);
+    }
+
+  velocity_speedtest_emit_ping_finished (self);
+}
+
+static void
 ping_done_cb (GObject *source,
               GAsyncResult *res,
               gpointer user_data)
@@ -52,7 +72,7 @@ ping_done_cb (GObject *source,
   VelocitySpeedtest *self = p->self;
   g_autoptr (GError) error = NULL;
   g_autoptr (GBytes) body = NULL;
-  gboolean stale = (p->generation != self->generation);
+  gboolean stale = (p->generation != self->ping_generation);
   double rtt = (g_get_monotonic_time () - p->t0) / 1000.0;
 
   body = soup_session_send_and_read_finish (SOUP_SESSION (source), res, &error);
@@ -64,20 +84,18 @@ ping_done_cb (GObject *source,
       return;
     }
 
+  // a failed ping must not abort the download, just drop the server from the cache
   if (body == NULL)
     {
-      // don't keep handing out a cached server that no longer answers
       velocity_speedtest_invalidate_best_server (self);
-      velocity_speedtest_fail (self, error != NULL ? error->message : "Latency test failed.");
+      ping_finish (self);
       g_object_unref (self);
       return;
     }
 
+  // the first sample is a warmup (connection setup), so it is skipped
   if (self->ping_sent > 1)
-    {
-      g_array_append_val (self->rtts, rtt);
-      velocity_speedtest_emit_progress (self, VELOCITY_PHASE_PING, rtt);
-    }
+    g_array_append_val (self->rtts, rtt);
 
   ping_next (self);
   g_object_unref (self);
@@ -86,46 +104,38 @@ ping_done_cb (GObject *source,
 static void
 ping_next (VelocitySpeedtest *self)
 {
+  PingCtx *p;
+  g_autofree char *url = NULL;
+  SoupMessage *msg;
+
   if (self->ping_sent >= PING_SAMPLES + 1)
     {
-      double jitter = 0.0;
-
-      // jitter: mean absolute difference between consecutive samples, in
-      // arrival order, so it must be computed before the array is sorted
-      // for the median
-      for (guint i = 1; i < self->rtts->len; i++)
-        jitter += fabs (g_array_index (self->rtts, double, i) -
-                        g_array_index (self->rtts, double, i - 1));
-      self->jitter = self->rtts->len > 1 ? jitter / (self->rtts->len - 1) : 0.0;
-
-      g_array_sort (self->rtts, compare_double);
-      self->ping = g_array_index (self->rtts, double, self->rtts->len / 2);
-
-      velocity_speedtest_start_transfer (self, VELOCITY_PHASE_DOWNLOAD);
+      ping_finish (self);
       return;
     }
 
-  {
-    PingCtx *p = g_new0 (PingCtx, 1);
-    g_autofree char *url = velocity_speedtest_build_url (self, self->ping_path, NULL);
-    SoupMessage *msg = soup_message_new (SOUP_METHOD_GET, url);
+  p = g_new0 (PingCtx, 1);
+  url = velocity_speedtest_build_url (self, self->ping_path, NULL);
+  msg = soup_message_new (SOUP_METHOD_GET, url);
 
-    p->self = g_object_ref (self);
-    p->generation = self->generation;
-    p->t0 = g_get_monotonic_time ();
-    self->ping_sent++;
+  p->self = g_object_ref (self);
+  p->generation = self->ping_generation;
+  p->t0 = g_get_monotonic_time ();
+  self->ping_sent++;
 
-    soup_session_send_and_read_async (self->session, msg, G_PRIORITY_DEFAULT,
-                                      self->run_cancellable, ping_done_cb, p);
-    g_object_unref (msg);
-  }
+  soup_session_send_and_read_async (self->session, msg, G_PRIORITY_DEFAULT,
+                                    self->run_cancellable, ping_done_cb, p);
+  g_object_unref (msg);
 }
 
 void
 velocity_speedtest_start_ping (VelocitySpeedtest *self)
 {
-  velocity_speedtest_set_phase (self, VELOCITY_PHASE_PING);
   g_array_set_size (self->rtts, 0);
   self->ping_sent = 0;
+  self->ping_generation++;
+
+  // ping runs in the background, the download starts right away
   ping_next (self);
+  velocity_speedtest_start_transfer (self, VELOCITY_PHASE_DOWNLOAD);
 }

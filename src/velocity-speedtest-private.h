@@ -84,6 +84,7 @@ struct _VelocitySpeedtest
 
   GArray *rtts;
   int ping_sent;
+  guint ping_generation;
 
   gint64 bytes;
   gint64 dl_bytes;
@@ -116,6 +117,7 @@ void velocity_speedtest_emit_finished (VelocitySpeedtest *self);
 void velocity_speedtest_emit_servers_changed (VelocitySpeedtest *self);
 void velocity_speedtest_emit_best_server_changed (VelocitySpeedtest *self);
 void velocity_speedtest_emit_preload_changed (VelocitySpeedtest *self);
+void velocity_speedtest_emit_ping_finished (VelocitySpeedtest *self);
 
 // server list, selection and latency probing
 void velocity_speedtest_select_server (VelocitySpeedtest *self);
@@ -127,7 +129,7 @@ void velocity_speedtest_cancel_preload (VelocitySpeedtest *self);
 void velocity_speedtest_invalidate_best_server (VelocitySpeedtest *self);
 void velocity_speedtest_watch_network (VelocitySpeedtest *self);
 
-// latency and jitter measurement
+// latency and jitter measurement, runs alongside the download
 void velocity_speedtest_start_ping (VelocitySpeedtest *self);
 
 // download/upload streams

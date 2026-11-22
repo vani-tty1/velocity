@@ -36,6 +36,7 @@ enum
   SIGNAL_SERVERS_CHANGED,
   SIGNAL_BEST_SERVER_CHANGED,
   SIGNAL_PRELOAD_CHANGED,
+  SIGNAL_PING_FINISHED,
   N_SIGNALS
 };
 
@@ -86,6 +87,12 @@ velocity_speedtest_emit_preload_changed (VelocitySpeedtest *self)
 }
 
 void
+velocity_speedtest_emit_ping_finished (VelocitySpeedtest *self)
+{
+  g_signal_emit (self, signals[SIGNAL_PING_FINISHED], 0);
+}
+
+void
 velocity_speedtest_stop_tick (VelocitySpeedtest *self)
 {
   if (self->tick_id != 0)
@@ -99,6 +106,7 @@ void
 velocity_speedtest_cancel_everything (VelocitySpeedtest *self)
 {
   self->generation++;
+  self->ping_generation++;
   self->waiting_for_preload = FALSE;
   velocity_speedtest_stop_tick (self);
 
@@ -277,6 +285,9 @@ velocity_speedtest_class_init (VelocitySpeedtestClass *klass)
                     0, NULL, NULL, NULL, G_TYPE_NONE, 0);
   signals[SIGNAL_PRELOAD_CHANGED] =
       g_signal_new ("preload-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+                    0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+  signals[SIGNAL_PING_FINISHED] =
+      g_signal_new ("ping-finished", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
                     0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
