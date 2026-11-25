@@ -21,22 +21,18 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
-#include <glib/gstdio.h>
-#include <json-glib/json-glib.h>
-#include <math.h>
 
-#include "velocity-accent.h"
+#include "velocity-format.h"
+#include "velocity-gauge.h"
+#include "velocity-history.h"
 #include "velocity-server-picker.h"
 #include "velocity-speedtest.h"
 #include "velocity-window.h"
-#define GAUGE_DEFAULT_MAX_MBPS 1000.0
-#define HISTORY_MAX 50
 
 struct _VelocityWindow
 {
   AdwApplicationWindow parent_instance;
 
-  /* Template widgets */
   GtkLabel *server_label;
   AdwSpinner *server_spinner;
   GtkDrawingArea *gauge;
@@ -52,515 +48,33 @@ struct _VelocityWindow
   GtkListBox *history_list;
   AdwActionRow *server_row;
 
-  JsonArray *history;
+  VelocityGauge *speed_gauge;
+  VelocityHistory *history;
   GSettings *settings;
   GtkStringList *server_names;
   guint server_selected;
   VelocitySpeedtest *test;
-
-  double gauge_fraction;
-  double gauge_target;
-  double gauge_max;
-  AdwAnimation *gauge_animation;
-  GdkRGBA accent;
 };
 
 G_DEFINE_FINAL_TYPE (VelocityWindow, velocity_window, ADW_TYPE_APPLICATION_WINDOW)
-
-static double
-mbps_to_fraction (double mbps,
-                  double max)
-{
-  if (mbps <= 0.0)
-    return 0.0;
-
-  return CLAMP (log10 (1.0 + mbps) / log10 (1.0 + max), 0.0, 1.0);
-}
-
-static void
-update_gauge_max (VelocityWindow *self)
-{
-  int max = g_settings_get_int (self->settings, "gauge-max");
-
-  self->gauge_max = max > 0 ? max : GAUGE_DEFAULT_MAX_MBPS;
-  gtk_widget_queue_draw (GTK_WIDGET (self->gauge));
-}
-
-static void
-on_gauge_max_setting_changed (GSettings *settings,
-                              const char *key,
-                              VelocityWindow *self)
-{
-  update_gauge_max (self);
-}
-
-static void
-update_accent (VelocityWindow *self)
-{
-  g_autofree char *id = g_settings_get_string (self->settings, "accent-color");
-
-  if (!velocity_accent_get_rgba (id, &self->accent))
-    {
-      AdwStyleManager *manager = adw_style_manager_get_default ();
-      GdkRGBA *rgba = adw_style_manager_get_accent_color_rgba (manager);
-
-      // the getter returns a newly allocated GdkRGBA
-      self->accent = *rgba;
-      gdk_rgba_free (rgba);
-    }
-
-  gtk_widget_queue_draw (GTK_WIDGET (self->gauge));
-}
-
-static void
-on_accent_changed (AdwStyleManager *manager,
-                   GParamSpec *pspec,
-                   VelocityWindow *self)
-{
-  update_accent (self);
-}
-
-static void
-on_accent_setting_changed (GSettings *settings,
-                           const char *key,
-                           VelocityWindow *self)
-{
-  update_accent (self);
-}
-
-static void
-gauge_draw (GtkDrawingArea *area,
-            cairo_t *cr,
-            int width,
-            int height,
-            gpointer user_data)
-{
-  VelocityWindow *self = user_data;
-  GtkWidget *widget = GTK_WIDGET (area);
-  GdkRGBA fg;
-  double cx = width / 2.0;
-  double cy = height / 2.0;
-  double line = 16.0;
-  double radius = MIN (width, height) / 2.0 - line;
-  double start = 0.75 * G_PI;
-  double sweep = 1.5 * G_PI;
-
-  gtk_widget_get_color (widget, &fg);
-
-  cairo_set_line_width (cr, line);
-  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
-
-  cairo_set_source_rgba (cr, fg.red, fg.green, fg.blue, 0.12);
-  cairo_arc (cr, cx, cy, radius, start, start + sweep);
-  cairo_stroke (cr);
-
-  if (self->gauge_fraction > 0.002)
-    {
-      gdk_cairo_set_source_rgba (cr, &self->accent);
-      cairo_arc (cr, cx, cy, radius, start,
-                 start + sweep * self->gauge_fraction);
-      cairo_stroke (cr);
-    }
-}
-
-static void
-gauge_animation_cb (double value,
-                    gpointer user_data)
-{
-  VelocityWindow *self = user_data;
-
-  self->gauge_fraction = value;
-  gtk_widget_queue_draw (GTK_WIDGET (self->gauge));
-}
-
-static void
-gauge_set_target (VelocityWindow *self,
-                  double fraction)
-{
-  if (self->gauge_animation != NULL)
-    adw_animation_skip (self->gauge_animation);
-  g_clear_object (&self->gauge_animation);
-
-  self->gauge_target = fraction;
-
-  self->gauge_animation =
-      adw_timed_animation_new (GTK_WIDGET (self->gauge),
-                               self->gauge_fraction, fraction, 250,
-                               adw_callback_animation_target_new (gauge_animation_cb,
-                                                                  self, NULL));
-  adw_timed_animation_set_easing (ADW_TIMED_ANIMATION (self->gauge_animation),
-                                  ADW_EASE_OUT_CUBIC);
-  adw_animation_play (self->gauge_animation);
-}
-
-static char *
-format_mbps (double mbps)
-{
-  if (mbps >= 1000.0)
-    return g_strdup_printf (_ ("%.2f Gbit/s"), mbps / 1000.0);
-  if (mbps >= 100.0)
-    return g_strdup_printf (_ ("%.0f Mbit/s"), mbps);
-
-  return g_strdup_printf (_ ("%.1f Mbit/s"), mbps);
-}
-
-static char *
-format_ms (double ms,
-           gboolean with_unit)
-{
-  if (ms < 10.0)
-    return g_strdup_printf (with_unit ? _ ("%.1f ms") : "%.1f", ms);
-
-  return g_strdup_printf (with_unit ? _ ("%.0f ms") : "%.0f", ms);
-}
-
-static char *
-history_path (void)
-{
-  return g_build_filename (g_get_user_data_dir (), "velocity", "history.json", NULL);
-}
-
-static GtkWidget *
-history_row_new (JsonObject *entry)
-{
-  double download = json_object_get_double_member_with_default (entry, "download", 0.0);
-  double upload = json_object_get_double_member_with_default (entry, "upload", 0.0);
-  g_autofree char *d = format_mbps (download);
-  g_autofree char *u = format_mbps (upload);
-  g_autofree char *title = g_strdup_printf ("↓ %s   ↑ %s", d, u);
-  GtkWidget *row = adw_action_row_new ();
-
-  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
-  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
-
-  // clicking a row opens the full details, see on_history_row_activated
-  adw_action_row_add_suffix (ADW_ACTION_ROW (row),
-                             gtk_image_new_from_icon_name ("go-next-symbolic"));
-  gtk_list_box_row_set_activatable (GTK_LIST_BOX_ROW (row), TRUE);
-  g_object_set_data_full (G_OBJECT (row), "entry",
-                          json_object_ref (entry),
-                          (GDestroyNotify) json_object_unref);
-
-  return row;
-}
-
-static void
-details_add_row (AdwPreferencesGroup *group,
-                 const char *title,
-                 const char *value)
-{
-  GtkWidget *row = adw_action_row_new ();
-
-  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
-  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
-  adw_action_row_set_subtitle (ADW_ACTION_ROW (row), value);
-  gtk_widget_add_css_class (row, "property");
-  adw_preferences_group_add (group, row);
-}
-
-static void on_details_delete_clicked (GtkButton *button,
-                                       VelocityWindow *self);
 
 static void
 on_history_row_activated (VelocityWindow *self,
                           GtkListBoxRow *row)
 {
-  JsonObject *entry = g_object_get_data (G_OBJECT (row), "entry");
-  AdwDialog *dialog;
-  GtkWidget *toolbar;
-  GtkWidget *page;
-  GtkWidget *group;
-  GtkWidget *delete_button;
-  g_autoptr (GDateTime) dt = NULL;
-  g_autofree char *when = NULL;
-  g_autofree char *d = NULL;
-  g_autofree char *u = NULL;
-  g_autofree char *p = NULL;
-  const char *server;
-
-  if (entry == NULL)
-    return;
-
-  dt = g_date_time_new_from_unix_local (json_object_get_int_member_with_default (entry, "timestamp", 0));
-  when = g_date_time_format (dt, "%x %X");
-  server = json_object_get_string_member_with_default (entry, "server", "");
-  d = format_mbps (json_object_get_double_member_with_default (entry, "download", 0.0));
-  u = format_mbps (json_object_get_double_member_with_default (entry, "upload", 0.0));
-  p = format_ms (json_object_get_double_member_with_default (entry, "ping", 0.0), TRUE);
-
-  group = adw_preferences_group_new ();
-  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Date"), when);
-  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Server"),
-                   server[0] != '\0' ? server : _ ("Unknown"));
-  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Download"), d);
-  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Upload"), u);
-  details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Ping"), p);
-
-  // older history entries were saved without jitter
-  if (json_object_has_member (entry, "jitter"))
-    {
-      g_autofree char *j = g_strdup_printf (_ ("%.1f ms"),
-                                            json_object_get_double_member (entry, "jitter"));
-
-      details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Jitter"), j);
-    }
-
-  // older history entries were saved without data used
-  if (json_object_has_member (entry, "bytes"))
-    {
-      g_autofree char *b = g_format_size (json_object_get_int_member (entry, "bytes"));
-
-      details_add_row (ADW_PREFERENCES_GROUP (group), _ ("Data used"), b);
-    }
-
-  page = adw_preferences_page_new ();
-  adw_preferences_page_add (ADW_PREFERENCES_PAGE (page), ADW_PREFERENCES_GROUP (group));
-
-  toolbar = adw_toolbar_view_new ();
-  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar), adw_header_bar_new ());
-  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar), page);
-
-  delete_button = gtk_button_new_with_label (_ ("Delete Result"));
-  gtk_widget_set_halign (delete_button, GTK_ALIGN_CENTER);
-  gtk_widget_set_margin_top (delete_button, 12);
-  gtk_widget_set_margin_bottom (delete_button, 12);
-  gtk_widget_add_css_class (delete_button, "pill");
-  gtk_widget_add_css_class (delete_button, "destructive-action");
-  adw_toolbar_view_add_bottom_bar (ADW_TOOLBAR_VIEW (toolbar), delete_button);
-
-  dialog = adw_dialog_new ();
-  g_object_set_data (G_OBJECT (delete_button), "entry", entry);
-  g_object_set_data (G_OBJECT (delete_button), "dialog", dialog);
-  g_signal_connect (delete_button, "clicked", G_CALLBACK (on_details_delete_clicked), self);
-  adw_dialog_set_title (dialog, _ ("Test Details"));
-  adw_dialog_set_content_width (dialog, 400);
-  adw_dialog_set_content_height (dialog, 650);
-  adw_dialog_set_child (dialog, toolbar);
-  adw_dialog_present (dialog, GTK_WIDGET (self));
-}
-
-static char *
-history_serialize (VelocityWindow *self,
-                   gsize *length)
-{
-  g_autoptr (JsonGenerator) generator = json_generator_new ();
-  g_autoptr (JsonNode) root = json_node_new (JSON_NODE_ARRAY);
-
-  json_node_set_array (root, self->history);
-  json_generator_set_root (generator, root);
-  json_generator_set_pretty (generator, TRUE);
-
-  return json_generator_to_data (generator, length);
-}
-
-static void
-history_load (VelocityWindow *self)
-{
-  g_autofree char *path = history_path ();
-  g_autoptr (JsonParser) parser = json_parser_new ();
-  JsonNode *root;
-
-  self->history = json_array_new ();
-
-  if (!json_parser_load_from_file (parser, path, NULL))
-    return;
-
-  root = json_parser_get_root (parser);
-  if (root == NULL || !JSON_NODE_HOLDS_ARRAY (root))
-    return;
-
-  g_clear_pointer (&self->history, json_array_unref);
-  self->history = json_array_ref (json_node_get_array (root));
-
-  // drop the oldest entries if the file grew past the limit
-  while (json_array_get_length (self->history) > HISTORY_MAX)
-    json_array_remove_element (self->history, 0);
-
-  for (guint i = 0; i < json_array_get_length (self->history); i++)
-    {
-      JsonNode *node = json_array_get_element (self->history, i);
-
-      if (JSON_NODE_HOLDS_OBJECT (node))
-        gtk_list_box_prepend (self->history_list,
-                              history_row_new (json_node_get_object (node)));
-    }
-
-  if (json_array_get_length (self->history) > 0)
-    gtk_stack_set_visible_child_name (self->history_stack, "list");
-}
-
-static void
-history_write (VelocityWindow *self)
-{
-  g_autofree char *path = history_path ();
-  g_autofree char *dir = g_path_get_dirname (path);
-  g_autofree char *data = NULL;
-  g_autoptr (GError) error = NULL;
-  gsize length;
-
-  data = history_serialize (self, &length);
-  g_mkdir_with_parents (dir, 0700);
-  if (!g_file_set_contents (path, data, length, &error))
-    g_warning ("Could not save history: %s", error->message);
-}
-
-static void
-history_save (VelocityWindow *self)
-{
-  const char *server = velocity_speedtest_get_server (self->test);
-  JsonObject *entry = json_object_new ();
-  GtkListBoxRow *old;
-
-  json_object_set_int_member (entry, "timestamp", g_get_real_time () / G_USEC_PER_SEC);
-  json_object_set_string_member (entry, "server", server != NULL ? server : "");
-  json_object_set_double_member (entry, "download", velocity_speedtest_get_download (self->test));
-  json_object_set_double_member (entry, "upload", velocity_speedtest_get_upload (self->test));
-  json_object_set_double_member (entry, "ping", velocity_speedtest_get_ping (self->test));
-  json_object_set_double_member (entry, "jitter", velocity_speedtest_get_jitter (self->test));
-  json_object_set_int_member (entry, "bytes", velocity_speedtest_get_data_used (self->test));
-  json_array_add_object_element (self->history, entry);
-
-  gtk_list_box_prepend (self->history_list, history_row_new (entry));
-  gtk_stack_set_visible_child_name (self->history_stack, "list");
-
-  if (json_array_get_length (self->history) > HISTORY_MAX)
-    {
-      json_array_remove_element (self->history, 0);
-
-      old = gtk_list_box_get_row_at_index (self->history_list, HISTORY_MAX);
-      if (old != NULL)
-        gtk_list_box_remove (self->history_list, GTK_WIDGET (old));
-    }
-
-  history_write (self);
-}
-
-static void
-history_show_empty_if_needed (VelocityWindow *self)
-{
-  if (json_array_get_length (self->history) == 0)
-    gtk_stack_set_visible_child_name (self->history_stack, "empty");
-}
-
-static GtkListBoxRow *
-history_find_row (VelocityWindow *self,
-                  JsonObject *entry)
-{
-  GtkListBoxRow *row;
-
-  for (int i = 0; (row = gtk_list_box_get_row_at_index (self->history_list, i)) != NULL; i++)
-    {
-      if (g_object_get_data (G_OBJECT (row), "entry") == entry)
-        return row;
-    }
-
-  return NULL;
-}
-
-static void
-history_delete_entry (VelocityWindow *self,
-                      JsonObject *entry)
-{
-  GtkListBoxRow *row = history_find_row (self, entry);
-
-  for (guint i = 0; i < json_array_get_length (self->history); i++)
-    {
-      JsonNode *node = json_array_get_element (self->history, i);
-
-      if (JSON_NODE_HOLDS_OBJECT (node) && json_node_get_object (node) == entry)
-        {
-          json_array_remove_element (self->history, i);
-          break;
-        }
-    }
-
-  if (row != NULL)
-    gtk_list_box_remove (self->history_list, GTK_WIDGET (row));
-
-  history_write (self);
-  history_show_empty_if_needed (self);
-}
-
-static void
-on_details_delete_clicked (GtkButton *button,
-                           VelocityWindow *self)
-{
-  JsonObject *entry = g_object_get_data (G_OBJECT (button), "entry");
-  AdwDialog *dialog = g_object_get_data (G_OBJECT (button), "dialog");
-
-  adw_dialog_close (dialog);
-  history_delete_entry (self, entry);
-}
-
-static void
-on_clear_response (GObject *source,
-                   GAsyncResult *result,
-                   gpointer user_data)
-{
-  VelocityWindow *self = user_data;
-  const char *response = adw_alert_dialog_choose_finish (ADW_ALERT_DIALOG (source), result);
-
-  if (g_strcmp0 (response, "clear") != 0)
-    return;
-
-  gtk_list_box_remove_all (self->history_list);
-  g_clear_pointer (&self->history, json_array_unref);
-  self->history = json_array_new ();
-
-  history_write (self);
-  history_show_empty_if_needed (self);
+  velocity_history_show_details (self->history, row);
 }
 
 static void
 on_clear_clicked (VelocityWindow *self)
 {
-  AdwDialog *dialog = adw_alert_dialog_new (_ ("Clear Results?"),
-                                            _ ("All saved results will be deleted."));
-
-  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (dialog),
-                                  "cancel", _ ("_Cancel"),
-                                  "clear", _ ("_Clear"),
-                                  NULL);
-  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (dialog), "clear",
-                                            ADW_RESPONSE_DESTRUCTIVE);
-  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (dialog), "cancel");
-  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (dialog), "cancel");
-  adw_alert_dialog_choose (ADW_ALERT_DIALOG (dialog), GTK_WIDGET (self), NULL,
-                           on_clear_response, self);
-}
-
-static void
-on_export_finished (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-  VelocityWindow *self = user_data;
-  g_autoptr (GFile) file = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (source), result, NULL);
-  g_autoptr (GError) error = NULL;
-  g_autofree char *data = NULL;
-  gsize length;
-
-  if (file == NULL)
-    return;
-
-  data = history_serialize (self, &length);
-  if (!g_file_replace_contents (file, data, length, NULL, FALSE,
-                                G_FILE_CREATE_NONE, NULL, NULL, &error))
-    {
-      AdwDialog *dialog = adw_alert_dialog_new (_ ("Export Failed"), error->message);
-
-      adw_alert_dialog_add_response (ADW_ALERT_DIALOG (dialog), "ok", _ ("_OK"));
-      adw_dialog_present (dialog, GTK_WIDGET (self));
-    }
+  velocity_history_confirm_clear (self->history);
 }
 
 static void
 on_export_clicked (VelocityWindow *self)
 {
-  g_autoptr (GtkFileDialog) dialog = gtk_file_dialog_new ();
-
-  gtk_file_dialog_set_initial_name (dialog, "speedtest-results.json");
-  gtk_file_dialog_save (dialog, GTK_WINDOW (self), NULL, on_export_finished, self);
+  velocity_history_export (self->history);
 }
 
 static const char *
@@ -696,7 +210,7 @@ set_live_value (VelocityWindow *self,
   gtk_label_set_label (self->speed_label, text);
   gtk_label_set_label (self->unit_label,
                        value >= 1000.0 ? _ ("Gbit/s") : _ ("Mbit/s"));
-  gauge_set_target (self, mbps_to_fraction (value, self->gauge_max));
+  velocity_gauge_set_speed (self->speed_gauge, value);
 }
 
 static void
@@ -714,9 +228,9 @@ notify_finished (VelocityWindow *self)
   if (app == NULL || gtk_window_is_active (GTK_WINDOW (self)))
     return;
 
-  d = format_mbps (velocity_speedtest_get_download (self->test));
-  u = format_mbps (velocity_speedtest_get_upload (self->test));
-  p = format_ms (velocity_speedtest_get_ping (self->test), TRUE);
+  d = velocity_format_mbps (velocity_speedtest_get_download (self->test));
+  u = velocity_format_mbps (velocity_speedtest_get_upload (self->test));
+  p = velocity_format_ms (velocity_speedtest_get_ping (self->test), TRUE);
   body = g_strdup_printf (_ ("Download %s · Upload %s · Ping %s"), d, u, p);
 
   notification = g_notification_new (_ ("Speed Test Complete"));
@@ -753,29 +267,29 @@ on_phase_changed (VelocitySpeedtest *test,
                              velocity_speedtest_get_server (test));
       gtk_label_set_label (self->speed_label, "0");
       gtk_label_set_label (self->unit_label, _ ("Mbit/s"));
-      gauge_set_target (self, 0.0);
+      velocity_gauge_reset (self->speed_gauge);
       break;
     case VELOCITY_PHASE_UPLOAD:
       status = _ ("Testing upload speed…");
       gtk_label_set_label (self->speed_label, "0");
-      gauge_set_target (self, 0.0);
+      velocity_gauge_reset (self->speed_gauge);
       {
-        g_autofree char *d = format_mbps (velocity_speedtest_get_download (test));
+        g_autofree char *d = velocity_format_mbps (velocity_speedtest_get_download (test));
 
         gtk_label_set_label (self->download_value, d);
       }
       break;
     case VELOCITY_PHASE_DONE:
       {
-        g_autofree char *u = format_mbps (velocity_speedtest_get_upload (test));
+        g_autofree char *u = velocity_format_mbps (velocity_speedtest_get_upload (test));
 
         gtk_label_set_label (self->upload_value, u);
       }
-      history_save (self);
+      velocity_history_add_result (self->history, self->test);
       notify_finished (self);
       status = _ ("Test complete");
       button = _ ("Test Again");
-      gauge_set_target (self, 0.0);
+      velocity_gauge_reset (self->speed_gauge);
       break;
     case VELOCITY_PHASE_FAILED:
       button = _ ("Try Again");
@@ -785,7 +299,7 @@ on_phase_changed (VelocitySpeedtest *test,
       button = _ ("Start");
       gtk_label_set_label (self->speed_label, "0");
       gtk_label_set_label (self->unit_label, _ ("Mbit/s"));
-      gauge_set_target (self, 0.0);
+      velocity_gauge_reset (self->speed_gauge);
       break;
     default:
       g_assert_not_reached ();
@@ -829,7 +343,7 @@ static void
 on_ping_finished (VelocitySpeedtest *test,
                   VelocityWindow *self)
 {
-  g_autofree char *p = format_ms (velocity_speedtest_get_ping (test), TRUE);
+  g_autofree char *p = velocity_format_ms (velocity_speedtest_get_ping (test), TRUE);
   g_autofree char *j = g_strdup_printf (_ ("%.1f ms"),
                                         velocity_speedtest_get_jitter (test));
 
@@ -844,7 +358,7 @@ on_failed (VelocitySpeedtest *test,
 {
   gtk_label_set_label (self->phase_label, message);
   gtk_label_set_label (self->server_label, _ ("Test failed"));
-  gauge_set_target (self, 0.0);
+  velocity_gauge_reset (self->speed_gauge);
 }
 
 static void
@@ -895,8 +409,8 @@ velocity_window_dispose (GObject *object)
       g_signal_handlers_disconnect_by_data (self->test, self);
       g_clear_object (&self->test);
     }
-  g_clear_object (&self->gauge_animation);
-  g_clear_pointer (&self->history, json_array_unref);
+  g_clear_pointer (&self->speed_gauge, velocity_gauge_free);
+  g_clear_pointer (&self->history, velocity_history_free);
   g_clear_object (&self->settings);
   g_clear_object (&self->server_names);
 
@@ -944,9 +458,9 @@ velocity_window_init (VelocityWindow *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   self->settings = g_settings_new ("io.github.vani_tty1.velocity");
-  update_gauge_max (self);
-  g_signal_connect_object (self->settings, "changed::gauge-max",
-                           G_CALLBACK (on_gauge_max_setting_changed), self, 0);
+  self->speed_gauge = velocity_gauge_new (self->gauge, self->settings);
+  self->history = velocity_history_new (GTK_WINDOW (self), self->history_list,
+                                        self->history_stack);
 
   if (g_str_has_suffix (APP_ID, ".Devel"))
     gtk_widget_add_css_class (GTK_WIDGET (self), "devel");
@@ -957,16 +471,7 @@ velocity_window_init (VelocityWindow *self)
   gtk_label_set_attributes (self->speed_label, big);
   pango_attr_list_unref (big);
 
-  gtk_drawing_area_set_draw_func (self->gauge, gauge_draw, self, NULL);
-
-  update_accent (self);
-  g_signal_connect_object (adw_style_manager_get_default (),
-                           "notify::accent-color-rgba",
-                           G_CALLBACK (on_accent_changed), self, 0);
-  g_signal_connect_object (self->settings, "changed::accent-color",
-                           G_CALLBACK (on_accent_setting_changed), self, 0);
-
-  history_load (self);
+  velocity_history_load (self->history);
 
   self->test = velocity_speedtest_new ();
   g_signal_connect (self->test, "phase-changed", G_CALLBACK (on_phase_changed), self);
