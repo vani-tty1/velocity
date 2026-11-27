@@ -55,6 +55,21 @@
 
   <releases>
 
+    <release version="0.5.0" date="2026-11-27">
+      <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
+      <description translate="no">
+        <p>This is a stable release with the following changes: </p>
+        <ul>
+          <li>Remove the Ookla backend</li>
+          <li>Don't probe servers when network is metered or app is minimized</li>
+          <li>Results history can now be removed individually or all of them at once</li>
+          <li>Added amount of data used on test results</li>
+          <li>Latency is now measured asynchronously</li>
+          <li>Server picker is now an AdwDialog instead of a AdwComboRow </li>
+        </ul>
+      </description>
+    </release>
+
     <release version="0.4.1" date="2026-11-15">
       <url type="details">https://github.com/vani-tty1/velocity/releases/latest/</url>
       <description translate="no">
