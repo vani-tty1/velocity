@@ -1,5 +1,5 @@
 Name:           velocity
-Version:        0.4.1
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
@@ -14,7 +14,7 @@ Requires:       gtk4 libadwaita >= 1.8
 Requires:       libsoup3 json-glib
 
 %description
-A speedtest app using LibreSpeed and Ookla servers
+A speedtest app using LibreSpeed servers
 
 %prep
 %autosetup
