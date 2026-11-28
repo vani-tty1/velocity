@@ -1,10 +1,10 @@
-Name:           velocity
+Name:           velocity-speedtest
 Version:        0.5.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
 URL:            https://github.com/vani-tty1/velocity
-Source0:        %{url}/archive/refs/tags/v%{version}/%{name}-%{version}.tar.gz
+Source0:        %{url}/archive/refs/tags/v%{version}/velocity-%{version}.tar.gz
 
 BuildRequires:  meson >= 1.7.0
 BuildRequires:  ninja-build gcc gettext pkgconfig(gtk4) pkgconfig(libadwaita-1) >= 1.8
