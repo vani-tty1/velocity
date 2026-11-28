@@ -1,6 +1,6 @@
 Name:           velocity-speedtest
 Version:        0.5.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A speedtest app for Linux
 License:        GPL-3.0-or-later
 URL:            https://github.com/vani-tty1/velocity
@@ -17,7 +17,7 @@ Requires:       libsoup3 json-glib
 A speedtest app using LibreSpeed servers
 
 %prep
-%autosetup
+%autosetup -n velocity-%{version}
 
 %build
 %meson
