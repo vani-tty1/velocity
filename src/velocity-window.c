@@ -362,6 +362,69 @@ on_failed (VelocitySpeedtest *test,
 }
 
 static void
+velocity_window_run_test (VelocityWindow *self)
+{
+  gtk_label_set_label (self->download_value, "—");
+  gtk_label_set_label (self->upload_value, "—");
+  gtk_label_set_label (self->ping_value, "—");
+  gtk_label_set_label (self->jitter_value, "—");
+  g_application_withdraw_notification (G_APPLICATION (gtk_window_get_application (GTK_WINDOW (self))),
+                                       "test-finished");
+  velocity_speedtest_start (self->test);
+}
+
+static void
+on_metered_response (AdwAlertDialog *dialog,
+                     const char *response,
+                     VelocityWindow *self)
+{
+  if (g_strcmp0 (response, "continue") == 0)
+    velocity_window_run_test (self);
+}
+
+static GtkWidget *
+velocity_window_build_metered_content (void)
+{
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("dialog-warning-symbolic");
+  GtkWidget *heading = gtk_label_new (_ ("Metered Connection"));
+  GtkWidget *body = gtk_label_new (_ ("You are on a metered network. A speed test can use a lot of data!."));
+
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 48);
+  gtk_widget_add_css_class (icon, "warning");
+  gtk_widget_add_css_class (heading, "title-2");
+  gtk_label_set_wrap (GTK_LABEL (body), TRUE);
+  gtk_label_set_justify (GTK_LABEL (body), GTK_JUSTIFY_CENTER);
+
+  gtk_box_append (GTK_BOX (box), icon);
+  gtk_box_append (GTK_BOX (box), heading);
+  gtk_box_append (GTK_BOX (box), body);
+  return box;
+}
+
+static void
+velocity_window_warn_metered (VelocityWindow *self)
+{
+  AdwDialog *dialog = adw_alert_dialog_new (NULL, NULL);
+
+  adw_alert_dialog_set_extra_child (ADW_ALERT_DIALOG (dialog),
+                                    velocity_window_build_metered_content ());
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (dialog),
+                                  "cancel", _ ("_Cancel"),
+                                  "continue", _ ("_Test Anyway"),
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (dialog),
+                                            "continue",
+                                            ADW_RESPONSE_DESTRUCTIVE);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (dialog), "cancel", ADW_RESPONSE_SUGGESTED);
+  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (dialog), "cancel");
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (dialog), "cancel");
+  g_signal_connect_object (dialog, "response",
+                           G_CALLBACK (on_metered_response), self, 0);
+  adw_dialog_present (dialog, GTK_WIDGET (self));
+}
+
+static void
 on_start_clicked (VelocityWindow *self)
 {
   switch (velocity_speedtest_get_phase (self->test))
@@ -375,13 +438,10 @@ on_start_clicked (VelocityWindow *self)
     case VELOCITY_PHASE_IDLE:
     case VELOCITY_PHASE_DONE:
     case VELOCITY_PHASE_FAILED:
-      gtk_label_set_label (self->download_value, "—");
-      gtk_label_set_label (self->upload_value, "—");
-      gtk_label_set_label (self->ping_value, "—");
-      gtk_label_set_label (self->jitter_value, "—");
-      g_application_withdraw_notification (G_APPLICATION (gtk_window_get_application (GTK_WINDOW (self))),
-                                           "test-finished");
-      velocity_speedtest_start (self->test);
+      if (g_network_monitor_get_network_metered (g_network_monitor_get_default ()))
+        velocity_window_warn_metered (self);
+      else
+        velocity_window_run_test (self);
       break;
     default:
       g_assert_not_reached ();
